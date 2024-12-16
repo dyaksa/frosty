@@ -39,20 +39,10 @@ func (app *App) Run(addr string) {
 }
 
 func (app *App) initializeRoutes() {
-	// adminHandler := handler.AdminHandler{DB: app.DB}
-	// app.Router.HandleFunc("/tipeloket", adminHandler.CreateTipeLoket).Methods("POST")
-	// app.Router.HandleFunc("/tipelokets", adminHandler.GetAllTipeLoket).Methods("GET")
-	// app.Router.HandleFunc("/tipeloket/{id:[0-9]+}", adminHandler.UpdateTipeLoket).Methods("PUT")
-	// app.Router.HandleFunc("/loket", adminHandler.CreateLoket).Methods("POST")
-	// app.Router.HandleFunc("/lokets", adminHandler.GetAllLoket).Methods("GET")
-	// app.Router.HandleFunc("/loket/{id:[0-9]+}", adminHandler.UpdateLoket).Methods("PUT")
-	// app.Router.HandleFunc("/loket/{id:[0-9]+}", adminHandler.DeleteLoket).Methods("DELETE")
-	// app.Router.HandleFunc("/tipeloket/{id:[0-9]+}", adminHandler.DeleteTipeLoket).Methods("DELETE")
-
-	// kioskHandler := handler.KioskHandler{DB: app.DB}
-	// app.Router.HandleFunc("/tiket/issue/{tipeloketid:[0-9]+}", kioskHandler.IssueTiket).Methods("GET")
-
-	// loketHandler := handler.LoketHandler{DB: app.DB}
-	// app.Router.HandleFunc("/loket/{id:[0-9]+}/call", loketHandler.CallTiket).Methods("GET")
-	// app.Router.HandleFunc("/loket/{id:[0-9]+}/recall", loketHandler.RecallTiket).Methods("GET")
+	wfHandler := WorkflowHandler{DB: app.DB}
+	app.Router.HandleFunc("/workflow/node", wfHandler.CreateNode).Methods("POST")
+	app.Router.HandleFunc("/workflow/node/{id:[0-9a-fA-F-]+}", wfHandler.GetNode).Methods("GET")
+	app.Router.HandleFunc("/workflow/node/{id:[0-9a-fA-F-]+}/relationship", wfHandler.AddRelationship).Methods("POST")
+	app.Router.HandleFunc("/workflow/node/{id:[0-9a-fA-F-]+}/descendants", wfHandler.GetDescendants).Methods("GET")
+	app.Router.HandleFunc("/workflow/node/{id:[0-9a-fA-F-]+}/execute", wfHandler.ExecuteWorkflow).Methods("POST")
 }
