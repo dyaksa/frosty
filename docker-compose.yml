@@ -1,0 +1,33 @@
+version: '3'
+services:
+  api:
+    build: .
+    ports: 
+      - 8080:8080 
+    environment:
+      - APP_DB_USERNAME=postgres
+      - APP_DB_PASSWORD=password
+      - APP_DB_NAME=def_database
+      - APP_TESTDB_NAME=test_database
+    restart: on-failure
+    depends_on:
+      - db
+    networks:
+      - latihan
+    
+  db:
+    build: ./pqinit
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=def_database
+    volumes:
+      - ./db-data/:/var/lib/postgresql/data/
+    networks:
+      - latihan
+
+networks:
+  latihan:
+    driver: bridge

@@ -1,21 +1,16 @@
 package workflow
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/kadzany/closure-table-go/model/domain"
-	"github.com/kadzany/closure-table-go/repository"
 )
 
-func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(domain.Node) error) error {
+func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(Node) error) error {
 	queue := []uuid.UUID{startNode}
 	visited := make(map[uuid.UUID]bool)
-
-	repo := repository.NewNodeRepository()
 
 	for len(queue) > 0 {
 		currentID := queue[0]
@@ -26,7 +21,7 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(domain.Node) e
 		}
 		visited[currentID] = true
 
-		node, err := repo.GetNodeByID(nil, db, currentID.String())
+		node, err := GetNode(db, currentID)
 		if err != nil {
 			return err
 		}
@@ -39,7 +34,7 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(domain.Node) e
 
 		switch node.Type {
 		case NodeTypeTask:
-			descendants, err := repo.GetDescendantList(context.Background(), db, currentID.String())
+			descendants, err := GetDescendants(db, currentID)
 			if err != nil {
 				return err
 			}
@@ -49,7 +44,7 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(domain.Node) e
 
 		case NodeTypeDecision:
 			// Custom logic for decision nodes
-			descendants, err := repo.GetDescendantList(context.Background(), db, currentID.String())
+			descendants, err := GetDescendants(db, currentID)
 			if err != nil {
 				return err
 			}
@@ -62,7 +57,7 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(domain.Node) e
 			}
 
 		case NodeTypeFork:
-			descendants, err := repo.GetDescendantList(context.Background(), db, currentID.String())
+			descendants, err := GetDescendants(db, currentID)
 			if err != nil {
 				return err
 			}
@@ -82,7 +77,7 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(domain.Node) e
 				queue = append(queue, currentID)
 				continue
 			}
-			descendants, err := repo.GetDescendantList(context.Background(), db, currentID.String())
+			descendants, err := GetDescendants(db, currentID)
 			if err != nil {
 				return err
 			}
@@ -101,7 +96,31 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(domain.Node) e
 	return nil
 }
 
-func evaluateCondition(node domain.Node, child domain.Node) bool {
+func ValidateWorkflow(db *sql.DB, startNode uuid.UUID) error {
+	rows, err := db.Query(`
+		SELECT COUNT(*)
+		FROM node_closure
+		WHERE ancestor = descendant AND ancestor = ?
+	`, startNode)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var count int
+	if rows.Next() {
+		err := rows.Scan(&count)
+		if err != nil {
+			return err
+		}
+		if count > 1 {
+			return fmt.Errorf("cyclic dependency detected")
+		}
+	}
+	return nil
+}
+
+func evaluateCondition(node Node, child Node) bool {
 	// Example: Evaluate based on some attributes or external data
 	return true // Replace with actual condition logic
 }
@@ -114,6 +133,7 @@ func allParentsCompleted(db *sql.DB, nodeID uuid.UUID) bool {
         JOIN nodes n ON nc.ancestor = n.id
         WHERE nc.descendant = ? AND n.type != 'End'
     `, nodeID).Scan(&count)
+
 	if err != nil {
 		return false
 	}
