@@ -89,6 +89,10 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(Node) error) e
 			// End nodes don't have children
 			continue
 
+		case NodeTypeStart:
+			// Start node, do nothing and continue
+			continue
+
 		default:
 			return fmt.Errorf("unsupported node type: %s", node.Type)
 		}
@@ -97,25 +101,15 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(Node) error) e
 }
 
 func ValidateWorkflow(db *sql.DB, startNode uuid.UUID) error {
-	rows, err := db.Query(`
-		SELECT COUNT(*)
-		FROM node_closure
-		WHERE ancestor = descendant AND ancestor = ?
-	`, startNode)
+	rows := db.QueryRow("SELECT COUNT(1) FROM node_closure WHERE ancestor = descendant AND ancestor = $1", startNode)
+
+	var count int
+	err := rows.Scan(&count)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
-
-	var count int
-	if rows.Next() {
-		err := rows.Scan(&count)
-		if err != nil {
-			return err
-		}
-		if count > 1 {
-			return fmt.Errorf("cyclic dependency detected")
-		}
+	if count > 1 {
+		return fmt.Errorf("cyclic dependency detected")
 	}
 	return nil
 }

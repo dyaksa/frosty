@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func CreateNode(db *sql.DB, title, nodeType string, description sql.NullString) (uuid.UUID, error) {
+func CreateNode(db *sql.DB, title, nodeType string, description string) (uuid.UUID, error) {
 	id := uuid.New()
 	_, err := db.Exec(`
 		INSERT INTO nodes (id, title, type, description, created_at)
