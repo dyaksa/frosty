@@ -1,6 +1,20 @@
 #!/bin/bash
 set -e
 
+# Function to check if Docker containers are running
+check_docker_containers() {
+    if [ $(docker ps -q -f name=api -f name=db | wc -l) -eq 0 ]; then
+        echo "Docker containers are not running. Starting containers..."
+        docker-compose up -d
+        sleep 10 # Wait for containers to start
+    else
+        echo "Docker containers are already running."
+    fi
+}
+
+# Check Docker containers
+check_docker_containers
+
 API_URL="http://localhost:8080/workflow/node"
 
 # Create nodes
