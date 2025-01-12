@@ -28,3 +28,4 @@ go.work.sum
 # Ignore the following directories
 db-data
 build
+main

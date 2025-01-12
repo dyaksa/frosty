@@ -3,6 +3,7 @@ package internal
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -18,12 +19,22 @@ type WorkflowHandler struct {
 func (wh *WorkflowHandler) CreateNode(resw http.ResponseWriter, req *http.Request) {
 	node := workflow.Node{}
 	decoder := json.NewDecoder(req.Body)
+
+	log.Println("Creating Node")
+	log.Println(req.Body)
+
 	if err := decoder.Decode(&node); err != nil {
 		responseError(resw, http.StatusBadRequest, "Invalid request payload")
 	}
 	defer req.Body.Close()
 
 	id, err := workflow.CreateNode(wh.DB, node.Title, node.Type, node.Description)
+
+	log.Println("Created Node")
+	log.Println(`id: `, id)
+	log.Println(`node: `, node)
+	log.Println(`err: `, err)
+
 	if err != nil {
 		responseError(resw, http.StatusInternalServerError, err.Error())
 		return
@@ -52,16 +63,24 @@ func (wh *WorkflowHandler) GetNode(resw http.ResponseWriter, req *http.Request) 
 func (wh *WorkflowHandler) AddRelationship(resw http.ResponseWriter, req *http.Request) {
 	var relationship workflow.NodeClosure
 	decoder := json.NewDecoder(req.Body)
+
+	log.Println("Adding Relationship")
+
 	if err := decoder.Decode(&relationship); err != nil {
 		responseError(resw, http.StatusBadRequest, "Invalid request payload")
 	}
 	defer req.Body.Close()
+
+	log.Println(`Ancestor: `, relationship.Ancestor)
+	log.Println(`Descendant: `, relationship.Descendant)
 
 	err := workflow.AddRelationship(wh.DB, relationship.Ancestor, relationship.Descendant)
 	if err != nil {
 		responseError(resw, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	log.Println("Added Relationship")
 
 	responseJson(resw, http.StatusCreated, relationship)
 }

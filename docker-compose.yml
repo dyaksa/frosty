@@ -1,20 +1,27 @@
 version: '3'
+
+volumes:
+  db-data:
+    driver: local
+    
 services:
   api:
     build: .
-    ports: 
-      - 8080:8080 
+    ports:
+      - 8080:8080
     environment:
       - APP_DB_USERNAME=postgres
       - APP_DB_PASSWORD=password
       - APP_DB_NAME=def_database
       - APP_TESTDB_NAME=test_database
+      - APP_DB_HOST=frosty-db-1
+      - APP_DB_PORT=5432
     restart: on-failure
     depends_on:
       - db
     networks:
       - latihan
-    
+
   db:
     build: ./pqinit
     ports:
@@ -24,7 +31,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=def_database
     volumes:
-      - ./db-data/:/var/lib/postgresql/data/
+      - db-data:/var/lib/postgresql/data/
     networks:
       - latihan
 

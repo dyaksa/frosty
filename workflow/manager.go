@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"database/sql"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,8 +12,13 @@ func CreateNode(db *sql.DB, title, nodeType string, description string) (uuid.UU
 	id := uuid.New()
 	_, err := db.Exec(`
 		INSERT INTO nodes (id, title, type, description, created_at)
-		VALUES (?, ?, ?, ?, ?)
+		VALUES ($1, $2, $3, $4, $5)
 	`, id, title, nodeType, description, time.Now())
+
+	if err != nil {
+		return uuid.Nil, err
+	}
+
 	return id, err
 }
 
@@ -29,12 +35,15 @@ func GetNode(db *sql.DB, nodeID uuid.UUID) (Node, error) {
 func AddRelationship(db *sql.DB, ancestor, descendant uuid.UUID) error {
 	_, err := db.Exec(`
 		INSERT INTO node_closure (ancestor, descendant, depth)
-		SELECT ancestor, ?, depth + 1
+		SELECT ancestor, $1::uuid, depth + 1
 		FROM node_closure
-		WHERE descendant = ?
+		WHERE descendant = $2::uuid
 		UNION ALL
-		SELECT ?, ?, 0
+		SELECT $3::uuid, $4::uuid, 0
 	`, descendant, ancestor, ancestor, descendant)
+
+	log.Println(err)
+
 	return err
 }
 
@@ -43,7 +52,7 @@ func GetDescendants(db *sql.DB, ancestor uuid.UUID) ([]Node, error) {
 		SELECT n.id, n.title, n.type, n.description, n.created_at, n.updated_at, n.deleted_at
 		FROM nodes n
 		JOIN node_closure nc ON nc.descendant = n.id
-		WHERE nc.ancestor = ?
+		WHERE nc.ancestor = $1
 	`, ancestor)
 	if err != nil {
 		return nil, err
