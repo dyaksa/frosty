@@ -73,7 +73,7 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(Node) error) e
 
 		case NodeTypeJoin:
 			// Wait for all parent nodes to complete
-			if !allParentsCompleted(db, currentID) { // Implement this function
+			if !AllParentsCompleted(db, currentID) { // Implement this function
 				queue = append(queue, currentID)
 				continue
 			}
@@ -96,40 +96,76 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(Node) error) e
 		default:
 			return fmt.Errorf("unsupported node type: %s", node.Type)
 		}
+
+		err = LogNodeExecution(db, node.ID, "success", "Node executed successfully")
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func ValidateWorkflow(db *sql.DB, startNode uuid.UUID) error {
-	rows := db.QueryRow("SELECT COUNT(1) FROM node_closure WHERE ancestor = descendant AND ancestor = $1", startNode)
+func RollbackWorkflow(db *sql.DB, currentNode uuid.UUID, rollbackScope string, rollbackAction func(Node) error) error {
+	// Get executed nodes based on rollback scope
+	var nodesToRollback []Node
+	var err error
 
-	var count int
-	err := rows.Scan(&count)
-	if err != nil {
-		return err
+	switch rollbackScope {
+	case "ancestor":
+		// Get only the immediate ancestor of the current node
+		nodesToRollback, err = GetImmediateAncestors(db, currentNode)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve immediate ancestor: %w", err)
+		}
+
+	case "start":
+		// Get all executed nodes up to the starting node
+		nodesToRollback, err = GetExecutedNodes(db, currentNode)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve executed nodes: %w", err)
+		}
+
+	case "finish":
+		// Get the current node
+		existingCurrentNode, err := GetNode(db, currentNode)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve node: %w", err)
+		}
+		// Log rollback success
+		err = LogNodeExecution(db, currentNode, "rollback", "Node rolled back successfully")
+		if err != nil {
+			return fmt.Errorf("failed to log rollback for node %s: %w", existingCurrentNode.Title, err)
+		}
+
+		// Return early as no further rollback actions are necessary
+		return nil
+
+	default:
+		return fmt.Errorf("invalid rollback scope: %s", rollbackScope)
 	}
-	if count > 1 {
-		return fmt.Errorf("cyclic dependency detected")
+
+	// Traverse nodes in reverse order for rollback
+	for i := len(nodesToRollback) - 1; i >= 0; i-- {
+		node := nodesToRollback[i]
+		fmt.Printf("Rolling back node: %s (%s)\n", node.Title, node.Type)
+
+		err := rollbackAction(node)
+		if err != nil {
+			return fmt.Errorf("failed to rollback node %s: %w", node.Title, err)
+		}
+
+		// Log rollback success
+		err = LogNodeExecution(db, node.ID, "rollback", "Node rolled back successfully")
+		if err != nil {
+			return fmt.Errorf("failed to log rollback for node %s: %w", node.Title, err)
+		}
 	}
+
+	fmt.Println("Rollback completed successfully")
 	return nil
 }
 
 func evaluateCondition(node Node, child Node) bool {
 	// Example: Evaluate based on some attributes or external data
 	return true // Replace with actual condition logic
-}
-
-func allParentsCompleted(db *sql.DB, nodeID uuid.UUID) bool {
-	var count int
-	err := db.QueryRow(`
-        SELECT COUNT(*)
-        FROM node_closure nc
-        JOIN nodes n ON nc.ancestor = n.id
-        WHERE nc.descendant = ? AND n.type != 'End'
-    `, nodeID).Scan(&count)
-
-	if err != nil {
-		return false
-	}
-	return count == 0
 }

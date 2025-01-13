@@ -126,3 +126,22 @@ func (wh *WorkflowHandler) ExecuteWorkflow(resw http.ResponseWriter, req *http.R
 
 	responseJson(resw, http.StatusOK, nil)
 }
+
+func (wh *WorkflowHandler) RollbackWorkflow(resw http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id, err := uuid.Parse(vars["id"])
+
+	if err != nil {
+		responseError(resw, http.StatusBadRequest, "Invalid Node Id")
+	}
+
+	err = workflow.RollbackWorkflow(wh.DB, id, "start", func(node workflow.Node) error {
+		return nil
+	})
+	if err != nil {
+		responseError(resw, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responseJson(resw, http.StatusOK, nil)
+}
