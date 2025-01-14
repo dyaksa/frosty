@@ -33,6 +33,7 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(Node) error) e
 		}
 
 		switch node.Type {
+		case NodeTypeStart:
 		case NodeTypeTask:
 			descendants, err := GetDescendants(db, currentID)
 			if err != nil {
@@ -87,10 +88,6 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(Node) error) e
 
 		case NodeTypeEnd:
 			// End nodes don't have children
-			continue
-
-		case NodeTypeStart:
-			// Start node, do nothing and continue
 			continue
 
 		default:

@@ -10,23 +10,24 @@ import (
 )
 
 func CreateNode(db *sql.DB, title, nodeType string, description string) (uuid.UUID, error) {
-	id := uuid.New()
-	_, err := db.Exec(`
-		INSERT INTO nodes (id, title, type, description, created_at)
-		VALUES ($1, $2, $3, $4, $5)
-	`, id, title, nodeType, description, time.Now())
+	var id uuid.UUID
+	err := db.QueryRow(`
+		INSERT INTO nodes (title, type, description, created_at)
+		VALUES ($1, $2, $3, NOW())
+		RETURNING id
+	`, title, nodeType, description).Scan(&id)
 
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	return id, err
+	return id, nil
 }
 
 func GetNode(db *sql.DB, nodeID uuid.UUID) (Node, error) {
 	node := Node{}
 	err := db.QueryRow(`
-		SELECT id, title, type, description, created_at, updated_at, deleted_at
+		SELECT id::uuid, title, type, description, created_at, updated_at, deleted_at
 		FROM nodes
 		WHERE id = $1
 	`, nodeID).Scan(&node.ID, &node.Title, &node.Type, &node.Description, &node.CreatedAt, &node.UpdatedAt, &node.DeletedAt)
@@ -74,14 +75,22 @@ func GetDescendants(db *sql.DB, ancestor uuid.UUID) ([]Node, error) {
 
 func LogNodeExecution(db *sql.DB, nodeID uuid.UUID, status, message string) error {
 	_, err := db.Exec(`
-		INSERT INTO workflow_logs (id, node_id, status, message)
-		VALUES ($1, $2, $3, $4)
-	`, uuid.New(), nodeID, status, message)
+		INSERT INTO workflow_logs (node_id, status, message)
+		VALUES ($1::uuid, $2, $3)
+	`, nodeID, status, message)
+	return err
+}
+
+func LogWorkflowNodeExecution(db *sql.DB, workflowID, nodeID uuid.UUID, status, message string) error {
+	_, err := db.Exec(`
+		INSERT INTO workflow_logs (workflow_id, node_id, status, message, executed_at)
+		VALUES ($1::uuid, $2::uuid, $3, $4, $5)
+	`, workflowID, nodeID, status, message, time.Now())
 	return err
 }
 
 func ValidateWorkflow(db *sql.DB, startNode uuid.UUID) error {
-	rows := db.QueryRow("SELECT COUNT(1) FROM node_closure WHERE ancestor = descendant AND ancestor = $1", startNode)
+	rows := db.QueryRow("SELECT COUNT(1) FROM node_closure WHERE ancestor = descendant AND ancestor = $1::uuid", startNode)
 
 	var count int
 	err := rows.Scan(&count)
@@ -99,7 +108,7 @@ func GetImmediateAncestors(db *sql.DB, nodeID uuid.UUID) ([]Node, error) {
 		SELECT n.id, n.title, n.type, n.description, n.created_at, n.updated_at, n.deleted_at
 		FROM node_closure nc
 		JOIN nodes n ON nc.ancestor = n.id
-		WHERE nc.descendant = $1 AND nc.depth = 1
+		WHERE nc.descendant = $1::uuid AND nc.depth = 1
 	`, nodeID)
 	if err != nil {
 		return nil, err
@@ -124,7 +133,7 @@ func GetExecutedNodes(db *sql.DB, currentNode uuid.UUID) ([]Node, error) {
 		FROM workflow_logs wl
 		JOIN nodes n ON wl.node_id = n.id
 		WHERE wl.status = 'success' AND wl.executed_at <= (
-			SELECT executed_at FROM workflow_logs WHERE node_id = $1
+			SELECT executed_at FROM workflow_logs WHERE node_id = $1::uuid
 		)
 		ORDER BY wl.executed_at DESC
 	`, currentNode)
@@ -151,7 +160,7 @@ func AllParentsCompleted(db *sql.DB, nodeID uuid.UUID) bool {
         SELECT COUNT(*)
         FROM node_closure nc
         JOIN nodes n ON nc.ancestor = n.id
-        WHERE nc.descendant = $1 AND n.type != 'End'
+        WHERE nc.descendant = $1::uuid AND n.type != 'End'
     `, nodeID).Scan(&count)
 
 	if err != nil {

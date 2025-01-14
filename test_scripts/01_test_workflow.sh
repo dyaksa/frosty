@@ -24,15 +24,11 @@ fi
 
 start_node_id=$(echo $start_node_id | sed 's/"//g')
 
-echo $start_node_id
-
 input_new_user_id=$(curl -s -X POST $API_URL -H "Content-Type: application/json" -d '{"title": "input_new_user", "type": "Task", "description": "Input new user"}')
 if [ $? -ne 0 ]; then
     echo "Error creating input_new_user node"
     exit 1
 fi
-
-echo $input_new_user_id
 
 input_new_user_id=$(echo $input_new_user_id | sed 's/"//g')
 
@@ -87,10 +83,10 @@ if [ $? -ne 0 ]; then
 fi
 
 # Execute the workflow
-# curl -s -X POST $API_URL/$start_node_id/execute -H "Content-Type: application/json"
-# if [ $? -ne 0 ]; then
-#     echo "Error executing the workflow"
-#     exit 1
-# fi
+curl -s -X POST $API_URL/$start_node_id/execute -H "Content-Type: application/json"
+if [ $? -ne 0 ]; then
+    echo "Error executing the workflow"
+    exit 1
+fi
 
-echo "Node configuration created successfully"
+echo "Node configuration & execution created successfully"

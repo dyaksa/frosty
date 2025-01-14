@@ -20,20 +20,12 @@ func (wh *WorkflowHandler) CreateNode(resw http.ResponseWriter, req *http.Reques
 	node := workflow.Node{}
 	decoder := json.NewDecoder(req.Body)
 
-	log.Println("Creating Node")
-	log.Println(req.Body)
-
 	if err := decoder.Decode(&node); err != nil {
 		responseError(resw, http.StatusBadRequest, "Invalid request payload")
 	}
 	defer req.Body.Close()
 
 	id, err := workflow.CreateNode(wh.DB, node.Title, node.Type, node.Description)
-
-	log.Println("Created Node")
-	log.Println(`id: `, id)
-	log.Println(`node: `, node)
-	log.Println(`err: `, err)
 
 	if err != nil {
 		responseError(resw, http.StatusInternalServerError, err.Error())
@@ -64,24 +56,16 @@ func (wh *WorkflowHandler) AddRelationship(resw http.ResponseWriter, req *http.R
 	var relationship workflow.NodeClosure
 	decoder := json.NewDecoder(req.Body)
 
-	log.Println("Adding Relationship")
-
 	if err := decoder.Decode(&relationship); err != nil {
 		responseError(resw, http.StatusBadRequest, "Invalid request payload")
 	}
 	defer req.Body.Close()
-
-	log.Println(`Ancestor: `, relationship.Ancestor)
-	log.Println(`Descendant: `, relationship.Descendant)
 
 	err := workflow.AddRelationship(wh.DB, relationship.Ancestor, relationship.Descendant)
 	if err != nil {
 		responseError(resw, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	log.Println("Added Relationship")
-
 	responseJson(resw, http.StatusCreated, relationship)
 }
 
@@ -117,6 +101,7 @@ func (wh *WorkflowHandler) ExecuteWorkflow(resw http.ResponseWriter, req *http.R
 	}
 
 	err = workflow.ExecuteWorkflow(wh.DB, id, func(node workflow.Node) error {
+		log.Println("Executing Node: ", node.ID)
 		return nil
 	})
 	if err != nil {

@@ -28,7 +28,9 @@ func TestWorkflowHandler_CreateNode(t *testing.T) {
 	}
 	nodeJSON, _ := json.Marshal(node)
 
-	mock.ExpectExec("INSERT INTO nodes").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectQuery("INSERT INTO nodes").
+		WithArgs("Test Node", "Task", "Test Description").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
 
 	req, _ := http.NewRequest("POST", "/workflow/node", bytes.NewBuffer(nodeJSON))
 	resw := httptest.NewRecorder()
@@ -45,7 +47,7 @@ func TestWorkflowHandler_GetNode(t *testing.T) {
 	handler := WorkflowHandler{DB: db}
 	nodeID := uuid.New()
 
-	mock.ExpectQuery("SELECT id, title, type, description, created_at, updated_at, deleted_at FROM nodes WHERE id = ?").
+	mock.ExpectQuery("SELECT id::uuid, title, type, description, created_at, updated_at, deleted_at FROM nodes WHERE id = ?").
 		WithArgs(nodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "type", "description", "created_at", "updated_at", "deleted_at"}).
 			AddRow(nodeID, "Test Node", "Task", "Test Description", time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), nil))
@@ -112,7 +114,7 @@ func TestWorkflowHandler_ExecuteWorkflow_NodeStart(t *testing.T) {
 		WithArgs(nodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
-	mock.ExpectQuery(`SELECT id, title, type, description, created_at, updated_at, deleted_at FROM nodes WHERE id = \?`).
+	mock.ExpectQuery(`SELECT id::uuid, title, type, description, created_at, updated_at, deleted_at FROM nodes`).
 		WithArgs(nodeID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "type", "description", "created_at", "updated_at", "deleted_at"}).
 			AddRow(nodeID, "Node Title", "Start", "Description", time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), nil))
@@ -125,6 +127,30 @@ func TestWorkflowHandler_ExecuteWorkflow_NodeStart(t *testing.T) {
 
 	log.Println(nodeID.String())
 	log.Println(resw.Body.String())
+
+	assert.Equal(t, http.StatusOK, resw.Code)
+}
+
+func TestWorkflowHandler_RollbackWorkflow(t *testing.T) {
+	db, mock, _ := sqlmock.New()
+	defer db.Close()
+
+	handler := WorkflowHandler{DB: db}
+	nodeID := uuid.New()
+
+	mock.ExpectQuery("SELECT n.id, n.title, n.type, n.description, n.created_at, n.updated_at, n.deleted_at").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "type", "description", "created_at", "updated_at", "deleted_at"}).
+			AddRow(nodeID, "Node Title", "Task", "Description", time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), nil))
+
+	mock.ExpectExec(`INSERT INTO workflow_logs \(node_id, status, message\) VALUES \(\$1\:\:uuid, \$2, \$3\)`).
+		WithArgs(nodeID, "rollback", "Node rolled back successfully").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	req, _ := http.NewRequest("POST", "/workflow/node/"+nodeID.String()+"/rollback", nil)
+	resw := httptest.NewRecorder()
+	req = mux.SetURLVars(req, map[string]string{"id": nodeID.String()})
+
+	handler.RollbackWorkflow(resw, req)
 
 	assert.Equal(t, http.StatusOK, resw.Code)
 }
