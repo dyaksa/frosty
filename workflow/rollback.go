@@ -34,7 +34,7 @@ func rollbackToStart(db *sql.DB, workflowID uuid.UUID, currentNodeID uuid.UUID) 
 		}
 
 		// Perform rollback logic for the current node
-		err = rollbackNode(db, node.ID)
+		err = RollbackNode(db, node.ID)
 		if err != nil {
 			return fmt.Errorf("rollback failed for node %s: %v", node.ID, err)
 		}
@@ -68,7 +68,7 @@ func rollbackOneAncestor(db *sql.DB, workflowID uuid.UUID, currentNodeID uuid.UU
 	}
 
 	// Perform rollback logic for the current node
-	err = rollbackNode(db, node.ID)
+	err = RollbackNode(db, node.ID)
 	if err != nil {
 		return fmt.Errorf("rollback failed for node %s: %v", node.ID, err)
 	}
@@ -80,7 +80,7 @@ func rollbackOneAncestor(db *sql.DB, workflowID uuid.UUID, currentNodeID uuid.UU
 	}
 
 	// Rollback the ancestor
-	err = rollbackNode(db, ancestor.ID)
+	err = RollbackNode(db, ancestor.ID)
 	if err != nil {
 		return fmt.Errorf("rollback failed for ancestor node %s: %v", ancestor.ID, err)
 	}
@@ -99,7 +99,7 @@ func rollbackFinish(db *sql.DB, workflowID uuid.UUID, currentNodeID uuid.UUID) e
 		return fmt.Errorf("error retrieving node %s: %v", currentNodeID, err)
 	}
 
-	err = rollbackNode(db, node.ID)
+	err = RollbackNode(db, node.ID)
 	if err != nil {
 		return fmt.Errorf("rollback failed for node %s: %v", currentNodeID, err)
 	}
@@ -115,7 +115,7 @@ func rollbackFinish(db *sql.DB, workflowID uuid.UUID, currentNodeID uuid.UUID) e
 }
 
 // Helper function to perform rollback on a single node
-func rollbackNode(db *sql.DB, nodeID uuid.UUID) error {
+func RollbackNode(db *sql.DB, nodeID uuid.UUID) error {
 	fmt.Printf("Rolling back node %s\n", nodeID)
 
 	// Perform rollback tasks for the node

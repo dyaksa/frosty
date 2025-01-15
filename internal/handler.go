@@ -3,7 +3,6 @@ package internal
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -100,10 +99,7 @@ func (wh *WorkflowHandler) ExecuteNode(resw http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	err = workflow.ExecuteNode(wh.DB, id, func(node workflow.Node) error {
-		log.Println("Executing Node: ", node.ID)
-		return nil
-	})
+	err = workflow.ExecuteNode(wh.DB, id)
 	if err != nil {
 		responseError(resw, http.StatusInternalServerError, err.Error())
 		return
@@ -120,9 +116,7 @@ func (wh *WorkflowHandler) RollbackNode(resw http.ResponseWriter, req *http.Requ
 		responseError(resw, http.StatusBadRequest, "Invalid Node Id")
 	}
 
-	err = workflow.RollbackNode(wh.DB, id, "start", func(node workflow.Node) error {
-		return nil
-	})
+	err = workflow.RollbackNode(wh.DB, id)
 	if err != nil {
 		responseError(resw, http.StatusInternalServerError, err.Error())
 		return
