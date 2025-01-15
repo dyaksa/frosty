@@ -75,7 +75,7 @@ func ExecuteTask(db *sql.DB, task Task, retryCount int) error {
 			fmt.Printf("Task %s executed successfully on attempt %d\n", task.ID, retry+1)
 
 			// Update task status and response
-			err := UpdateTaskStatusAndResponse(db, task.ID, "completed", response, httpCode, "")
+			err := UpdateTaskStatusAndResponse(db, task.ID, "completed", response, "", httpCode)
 			if err != nil {
 				return fmt.Errorf("failed to update task %s status: %v", task.ID, err)
 			}
@@ -87,7 +87,7 @@ func ExecuteTask(db *sql.DB, task Task, retryCount int) error {
 		fmt.Printf("Task %s failed on attempt %d: %v\n", task.ID, retry+1, err)
 
 		// Update task retry count and error
-		err = UpdateTaskStatusAndResponse(db, task.ID, "failed", "", httpCode, err.Error())
+		err = UpdateTaskStatusAndResponse(db, task.ID, "failed", "", err.Error(), httpCode)
 		if err != nil {
 			return fmt.Errorf("failed to update task %s status on failure: %v", task.ID, err)
 		}

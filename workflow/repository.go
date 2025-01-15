@@ -103,28 +103,21 @@ func ValidateWorkflow(db *sql.DB, startNode uuid.UUID) error {
 	return nil
 }
 
-func GetImmediateAncestors(db *sql.DB, nodeID uuid.UUID) ([]Node, error) {
-	rows, err := db.Query(`
+func GetImmediateAncestor(db *sql.DB, nodeID uuid.UUID) (Node, error) {
+	row := db.QueryRow(`
 		SELECT n.id, n.title, n.type, n.description, n.created_at, n.updated_at, n.deleted_at
 		FROM node_closure nc
 		JOIN nodes n ON nc.ancestor = n.id
 		WHERE nc.descendant = $1::uuid AND nc.depth = 1
+		LIMIT 1
 	`, nodeID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
 
-	var nodes []Node
-	for rows.Next() {
-		node := Node{}
-		err := rows.Scan(&node.ID, &node.Title, &node.Type, &node.Description, &node.CreatedAt, &node.UpdatedAt, &node.DeletedAt)
-		if err != nil {
-			return nil, err
-		}
-		nodes = append(nodes, node)
+	node := Node{}
+	err := row.Scan(&node.ID, &node.Title, &node.Type, &node.Description, &node.CreatedAt, &node.UpdatedAt, &node.DeletedAt)
+	if err != nil {
+		return Node{}, err
 	}
-	return nodes, nil
+	return node, nil
 }
 
 func GetExecutedNodes(db *sql.DB, currentNode uuid.UUID) ([]Node, error) {
@@ -172,15 +165,15 @@ func AllParentsCompleted(db *sql.DB, nodeID uuid.UUID) bool {
 func GetWorkflowNodes(db *sql.DB, workflowID uuid.UUID) ([]Node, error) {
 	// Query to fetch all nodes belonging to the specified workflow
 	query := `
-		SELECT 
+		SELECT
 			n.id, n.title, n.type, n.description, n.created_at, n.updated_at, n.deleted_at
-		FROM 
+		FROM
 			nodes n
-		INNER JOIN 
+		INNER JOIN
 			workflow_nodes wn ON n.id = wn.node_id
-		WHERE 
+		WHERE
 			wn.workflow_id = $1 AND n.deleted_at IS NULL
-		ORDER BY 
+		ORDER BY
 			wn.created_at ASC;
 	`
 
@@ -209,13 +202,13 @@ func GetWorkflowNodes(db *sql.DB, workflowID uuid.UUID) ([]Node, error) {
 func GetStartingNode(db *sql.DB, workflowID uuid.UUID) (Node, error) {
 	// Query to fetch the starting node of the workflow
 	query := `
-		SELECT 
+		SELECT
 			n.id, n.title, n.type, n.description, n.created_at, n.updated_at, n.deleted_at
-		FROM 
+		FROM
 			nodes n
-		INNER JOIN 
+		INNER JOIN
 			workflow_nodes wn ON n.id = wn.node_id
-		WHERE 
+		WHERE
 			wn.workflow_id = $1 AND wn.is_starting_node = true AND n.deleted_at IS NULL
 		LIMIT 1;
 	`
@@ -240,32 +233,32 @@ func GetStartingNode(db *sql.DB, workflowID uuid.UUID) (Node, error) {
 func GetNodeTasks(db *sql.DB, nodeID uuid.UUID) ([]NodeTask, error) {
 	// Query to fetch tasks associated with the given node
 	query := `
-		SELECT 
-			nt.id, 
-			nt.node_id, 
-			nt.task_id, 
-			nt.order, 
-			nt.status, 
-			nt.retry_count, 
-			nt.http_code, 
-			nt.response, 
-			nt.error, 
-			nt.created_at, 
-			nt.updated_at, 
+		SELECT
+			nt.id,
+			nt.node_id,
+			nt.task_id,
+			nt.order,
+			nt.status,
+			nt.retry_count,
+			nt.http_code,
+			nt.response,
+			nt.error,
+			nt.created_at,
+			nt.updated_at,
 			nt.deleted_at,
 			t.id,
-			t.title, 
-			t.type, 
+			t.title,
+			t.type,
 			t.http_method,
-			t.action, 
+			t.action,
 			t.params
-		FROM 
+		FROM
 			node_tasks nt
-		INNER JOIN 
+		INNER JOIN
 			tasks t ON nt.task_id = t.id
-		WHERE 
+		WHERE
 			nt.node_id = $1 AND nt.deleted_at IS NULL
-		ORDER BY 
+		ORDER BY
 			nt.order ASC;
 	`
 
@@ -298,4 +291,31 @@ func GetNodeTasks(db *sql.DB, nodeID uuid.UUID) ([]NodeTask, error) {
 	}
 
 	return nodeTasks, nil
+}
+
+func UpdateTaskStatusAndResponse(db *sql.DB, taskID uuid.UUID, status, response, errorMessage string, httpCode int) error {
+	_, err := db.Exec(`
+		UPDATE node_tasks
+		SET status = $1, response = $2, error = $3, http_code = $4, updated_at = NOW()
+		WHERE task_id = $5
+	`, status, response, errorMessage, httpCode, taskID)
+	return err
+}
+
+func UpdateWorkflowStatus(db *sql.DB, workflowID uuid.UUID, status string) error {
+	_, err := db.Exec(`
+		UPDATE workflows
+		SET status = $1, updated_at = NOW()
+		WHERE id = $2
+	`, status, workflowID)
+	return err
+}
+
+func UpdateTaskStatus(db *sql.DB, taskID uuid.UUID, status string) error {
+	_, err := db.Exec(`
+		UPDATE node_tasks
+		SET status = $1, updated_at = NOW()
+		WHERE task_id = $2
+	`, status, taskID)
+	return err
 }
