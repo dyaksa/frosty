@@ -103,7 +103,7 @@ func TestWorkflowHandler_GetDescendants(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resw.Code)
 }
 
-func TestWorkflowHandler_ExecuteWorkflow_NodeStart(t *testing.T) {
+func TestWorkflowHandler_ExecuteNode_NodeStart(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 	defer db.Close()
 
@@ -123,7 +123,7 @@ func TestWorkflowHandler_ExecuteWorkflow_NodeStart(t *testing.T) {
 	resw := httptest.NewRecorder()
 	req = mux.SetURLVars(req, map[string]string{"id": nodeID.String()})
 
-	handler.ExecuteWorkflow(resw, req)
+	handler.ExecuteNode(resw, req)
 
 	log.Println(nodeID.String())
 	log.Println(resw.Body.String())
@@ -131,7 +131,7 @@ func TestWorkflowHandler_ExecuteWorkflow_NodeStart(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resw.Code)
 }
 
-func TestWorkflowHandler_RollbackWorkflow(t *testing.T) {
+func TestWorkflowHandler_RollbackNode(t *testing.T) {
 	db, mock, _ := sqlmock.New()
 	defer db.Close()
 
@@ -150,7 +150,7 @@ func TestWorkflowHandler_RollbackWorkflow(t *testing.T) {
 	resw := httptest.NewRecorder()
 	req = mux.SetURLVars(req, map[string]string{"id": nodeID.String()})
 
-	handler.RollbackWorkflow(resw, req)
+	handler.RollbackNode(resw, req)
 
 	assert.Equal(t, http.StatusOK, resw.Code)
 }

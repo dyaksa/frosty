@@ -86,7 +86,7 @@ func (wh *WorkflowHandler) GetDescendants(resw http.ResponseWriter, req *http.Re
 	responseJson(resw, http.StatusOK, descendants)
 }
 
-func (wh *WorkflowHandler) ExecuteWorkflow(resw http.ResponseWriter, req *http.Request) {
+func (wh *WorkflowHandler) ExecuteNode(resw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id, err := uuid.Parse(vars["id"])
 
@@ -100,7 +100,7 @@ func (wh *WorkflowHandler) ExecuteWorkflow(resw http.ResponseWriter, req *http.R
 		return
 	}
 
-	err = workflow.ExecuteWorkflow(wh.DB, id, func(node workflow.Node) error {
+	err = workflow.ExecuteNode(wh.DB, id, func(node workflow.Node) error {
 		log.Println("Executing Node: ", node.ID)
 		return nil
 	})
@@ -112,7 +112,7 @@ func (wh *WorkflowHandler) ExecuteWorkflow(resw http.ResponseWriter, req *http.R
 	responseJson(resw, http.StatusOK, nil)
 }
 
-func (wh *WorkflowHandler) RollbackWorkflow(resw http.ResponseWriter, req *http.Request) {
+func (wh *WorkflowHandler) RollbackNode(resw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id, err := uuid.Parse(vars["id"])
 
@@ -120,7 +120,7 @@ func (wh *WorkflowHandler) RollbackWorkflow(resw http.ResponseWriter, req *http.
 		responseError(resw, http.StatusBadRequest, "Invalid Node Id")
 	}
 
-	err = workflow.RollbackWorkflow(wh.DB, id, "start", func(node workflow.Node) error {
+	err = workflow.RollbackNode(wh.DB, id, "start", func(node workflow.Node) error {
 		return nil
 	})
 	if err != nil {

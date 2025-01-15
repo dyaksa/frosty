@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(Node) error) error {
+func ExecuteNode(db *sql.DB, startNode uuid.UUID, action func(Node) error) error {
 	queue := []uuid.UUID{startNode}
 	visited := make(map[uuid.UUID]bool)
 
@@ -67,7 +67,7 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(Node) error) e
 				wg.Add(1)
 				go func(childID uuid.UUID) {
 					defer wg.Done()
-					ExecuteWorkflow(db, childID, action) // Recursive execution
+					ExecuteNode(db, childID, action) // Recursive execution
 				}(child.ID)
 			}
 			wg.Wait()
@@ -102,7 +102,7 @@ func ExecuteWorkflow(db *sql.DB, startNode uuid.UUID, action func(Node) error) e
 	return nil
 }
 
-func RollbackWorkflow(db *sql.DB, currentNode uuid.UUID, rollbackScope string, rollbackAction func(Node) error) error {
+func RollbackNode(db *sql.DB, currentNode uuid.UUID, rollbackScope string, rollbackAction func(Node) error) error {
 	// Get executed nodes based on rollback scope
 	var nodesToRollback []Node
 	var err error
