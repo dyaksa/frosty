@@ -38,12 +38,14 @@ type NodeTask struct {
 	CreatedAt  *time.Time `db:"created_at" json:"created_at"`   // Creation timestamp
 	UpdatedAt  *time.Time `db:"updated_at" json:"updated_at"`   // Update timestamp
 	DeletedAt  *time.Time `db:"deleted_at" json:"deleted_at"`   // Deletion timestamp
+	Task       Task       `json:"task"`                         // Embedded Task details
 }
 
 type Task struct {
-	ID         uuid.UUID  `db:"id" json:"id"`                   // Unique identifier for the task
-	Title      string     `db:"title" json:"title"`             // Title of the task
-	Type       string     `db:"type" json:"type"`               // Type of the task
+	ID         uuid.UUID  `db:"id" json:"id"`       // Unique identifier for the task
+	Title      string     `db:"title" json:"title"` // Title of the task
+	Type       string     `db:"type" json:"type"`
+	HttpMethod string     `db:"http_method" json:"http_method"` // Type of the task
 	Action     string     `db:"action" json:"action"`           // Action to be performed by the task
 	Params     string     `db:"params" json:"params"`           // Parameters for the action
 	MaxRetries int        `db:"max_retries" json:"max_retries"` // Maximum number of retries for this task

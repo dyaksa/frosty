@@ -168,3 +168,134 @@ func AllParentsCompleted(db *sql.DB, nodeID uuid.UUID) bool {
 	}
 	return count == 0
 }
+
+func GetWorkflowNodes(db *sql.DB, workflowID uuid.UUID) ([]Node, error) {
+	// Query to fetch all nodes belonging to the specified workflow
+	query := `
+		SELECT 
+			n.id, n.title, n.type, n.description, n.created_at, n.updated_at, n.deleted_at
+		FROM 
+			nodes n
+		INNER JOIN 
+			workflow_nodes wn ON n.id = wn.node_id
+		WHERE 
+			wn.workflow_id = $1 AND n.deleted_at IS NULL
+		ORDER BY 
+			wn.created_at ASC;
+	`
+
+	// Execute the query
+	rows, err := db.Query(query, workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching nodes for workflow %s: %v", workflowID, err)
+	}
+	defer rows.Close()
+
+	var nodes []Node
+
+	// Parse the rows into Node structs
+	for rows.Next() {
+		var node Node
+		err := rows.Scan(&node.ID, &node.Title, &node.Type, &node.Description, &node.CreatedAt, &node.UpdatedAt, &node.DeletedAt)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning node row: %v", err)
+		}
+		nodes = append(nodes, node)
+	}
+
+	return nodes, nil
+}
+
+func GetStartingNode(db *sql.DB, workflowID uuid.UUID) (Node, error) {
+	// Query to fetch the starting node of the workflow
+	query := `
+		SELECT 
+			n.id, n.title, n.type, n.description, n.created_at, n.updated_at, n.deleted_at
+		FROM 
+			nodes n
+		INNER JOIN 
+			workflow_nodes wn ON n.id = wn.node_id
+		WHERE 
+			wn.workflow_id = $1 AND wn.is_starting_node = true AND n.deleted_at IS NULL
+		LIMIT 1;
+	`
+
+	// Execute the query
+	row := db.QueryRow(query, workflowID)
+
+	var node Node
+
+	// Parse the result into a Node struct
+	err := row.Scan(&node.ID, &node.Title, &node.Type, &node.Description, &node.CreatedAt, &node.UpdatedAt, &node.DeletedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return Node{}, fmt.Errorf("no starting node found for workflow %s", workflowID)
+		}
+		return Node{}, fmt.Errorf("error fetching starting node for workflow %s: %v", workflowID, err)
+	}
+
+	return node, nil
+}
+
+func GetNodeTasks(db *sql.DB, nodeID uuid.UUID) ([]NodeTask, error) {
+	// Query to fetch tasks associated with the given node
+	query := `
+		SELECT 
+			nt.id, 
+			nt.node_id, 
+			nt.task_id, 
+			nt.order, 
+			nt.status, 
+			nt.retry_count, 
+			nt.http_code, 
+			nt.response, 
+			nt.error, 
+			nt.created_at, 
+			nt.updated_at, 
+			nt.deleted_at,
+			t.id,
+			t.title, 
+			t.type, 
+			t.http_method,
+			t.action, 
+			t.params
+		FROM 
+			node_tasks nt
+		INNER JOIN 
+			tasks t ON nt.task_id = t.id
+		WHERE 
+			nt.node_id = $1 AND nt.deleted_at IS NULL
+		ORDER BY 
+			nt.order ASC;
+	`
+
+	// Execute the query
+	rows, err := db.Query(query, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching tasks for node %s: %v", nodeID, err)
+	}
+	defer rows.Close()
+
+	var nodeTasks []NodeTask
+
+	// Parse the rows into NodeTask structs
+	for rows.Next() {
+		var nodeTask NodeTask
+
+		err := rows.Scan(
+			&nodeTask.ID, &nodeTask.NodeID, &nodeTask.TaskID,
+			&nodeTask.Order, &nodeTask.Status, &nodeTask.RetryCount,
+			&nodeTask.HttpCode, &nodeTask.Response, &nodeTask.Error,
+			&nodeTask.CreatedAt, &nodeTask.UpdatedAt, &nodeTask.DeletedAt,
+			&nodeTask.Task.ID, &nodeTask.Task.Title, &nodeTask.Task.Type,
+			&nodeTask.Task.HttpMethod, &nodeTask.Task.Action, &nodeTask.Task.Params,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning node task row: %v", err)
+		}
+
+		nodeTasks = append(nodeTasks, nodeTask)
+	}
+
+	return nodeTasks, nil
+}
