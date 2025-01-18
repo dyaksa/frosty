@@ -25,9 +25,10 @@ fi
 
 workflow_id=$(echo $workflow_id | sed 's/"//g')
 
+echo workflow_id: $workflow_id
+
 # Create nodes
-declare -A nodes
-declare -a node_titles=("start" "input_new_user" "check_user_personal_info" "save_user_data" "end")
+node_titles=("start" "input_new_user" "check_user_personal_info" "save_user_data" "end")
 
 for title in "${node_titles[@]}"; do
     node_id=$(curl -s -X POST $API_URL/node -H "Content-Type: application/json" -d "{\"workflow_id\": \"$workflow_id\", \"title\": \"$title\", \"type\": \"Task\", \"description\": \"$title node\"}")
@@ -40,7 +41,7 @@ for title in "${node_titles[@]}"; do
 done
 
 # Create relationships
-declare -a relationships=(
+relationships=(
     "start input_new_user"
     "input_new_user check_user_personal_info"
     "check_user_personal_info save_user_data"

@@ -319,3 +319,18 @@ func UpdateTaskStatus(db *sql.DB, taskID uuid.UUID, status string) error {
 	`, status, taskID)
 	return err
 }
+
+func CreateWorkflow(db *sql.DB, name, description string) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := db.QueryRow(`
+		INSERT INTO workflows (name, description, created_at)
+		VALUES ($1, $2, NOW())
+		RETURNING id
+	`, name, description).Scan(&id)
+
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return id, nil
+}

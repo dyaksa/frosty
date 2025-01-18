@@ -124,3 +124,40 @@ func (wh *WorkflowHandler) RollbackNode(resw http.ResponseWriter, req *http.Requ
 
 	responseJson(resw, http.StatusOK, nil)
 }
+
+func (wh *WorkflowHandler) ExecuteWorkflow(resw http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id, err := uuid.Parse(vars["id"])
+
+	if err != nil {
+		responseError(resw, http.StatusBadRequest, "Invalid Workflow Id")
+		return
+	}
+
+	err = workflow.ExecuteWorkflow(wh.DB, id)
+	if err != nil {
+		responseError(resw, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responseJson(resw, http.StatusOK, nil)
+}
+
+func (wh *WorkflowHandler) CreateWorkflow(resw http.ResponseWriter, req *http.Request) {
+	wf := workflow.Workflow{}
+	decoder := json.NewDecoder(req.Body)
+
+	if err := decoder.Decode(&wf); err != nil {
+		responseError(resw, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer req.Body.Close()
+
+	id, err := workflow.CreateWorkflow(wh.DB, wf.Name, wf.Description)
+	if err != nil {
+		responseError(resw, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responseJson(resw, http.StatusCreated, id)
+}

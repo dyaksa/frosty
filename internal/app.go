@@ -46,4 +46,6 @@ func (app *App) initializeRoutes() {
 	app.Router.HandleFunc("/workflow/node/{id:[0-9a-fA-F-]+}/descendants", wfHandler.GetDescendants).Methods("GET")
 	app.Router.HandleFunc("/workflow/node/{id:[0-9a-fA-F-]+}/execute", wfHandler.ExecuteNode).Methods("POST")
 	app.Router.HandleFunc("/workflow/node/{id:[0-9a-fA-F-]+}/rollback", wfHandler.RollbackNode).Methods("POST")
+	app.Router.HandleFunc("/workflow/{id:[0-9a-fA-F-]+}/execute", wfHandler.ExecuteWorkflow).Methods("POST")
+	app.Router.HandleFunc("/workflow", wfHandler.CreateWorkflow).Methods("POST")
 }
