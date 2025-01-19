@@ -28,7 +28,7 @@ type NodeTask struct {
 	ID         uuid.UUID  `db:"id" json:"id"`                   // Unique identifier for the node-task relationship
 	NodeID     uuid.UUID  `db:"node_id" json:"node_id"`         // ID of the node
 	TaskID     uuid.UUID  `db:"task_id" json:"task_id"`         // ID of the task
-	Order      int        `db:"order" json:"order"`             // Order of task execution within the node
+	TaskOrder  int        `db:"order" json:"task_order"`        // Order of task execution within the node
 	Status     string     `db:"status" json:"status"`           // Current status of the task (e.g., pending, completed)
 	RetryCount int        `db:"retry_count" json:"retry_count"` // Number of retries for this task
 	Data       string     `db:"data" json:"data"`               // Data associated with the task
@@ -66,7 +66,7 @@ type Workflow struct {
 type WorkflowNode struct {
 	ID             uuid.UUID  `db:"id" json:"id"`                             // Unique identifier for the node
 	WorkflowID     uuid.UUID  `db:"workflow_id" json:"workflow_id"`           // ID of the workflow this node belongs to
-	NodeID         uuid.UUID  `db:"node_id" json:"strating_node_id"`          // ID of the related node
+	NodeID         uuid.UUID  `db:"node_id" json:"starting_node_id"`          // ID of the related node
 	IsStartingNode bool       `db:"is_starting_node" json:"is_starting_node"` // Is this node the starting node?
 	CreatedAt      *time.Time `db:"created_at" json:"created_at"`             // Creation timestamp
 	UpdatedAt      *time.Time `db:"updated_at" json:"updated_at"`             // Update timestamp

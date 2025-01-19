@@ -15,7 +15,7 @@ CREATE TABLE node_tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     node_id UUID NOT NULL,
     task_id UUID NOT NULL,
-    order INT NOT NULL,
+    task_order INT NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
     retry_count INT DEFAULT 0,
     http_code INT,

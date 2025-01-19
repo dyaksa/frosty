@@ -25,19 +25,46 @@ fi
 
 workflow_id=$(echo $workflow_id | sed 's/"//g')
 
-echo workflow_id: $workflow_id
-
 # Create nodes
 node_titles=("start" "input_new_user" "check_user_personal_info" "save_user_data" "end")
 
+# Declare associative array in a way that works in both bash and zsh
+if [ -n "$ZSH_VERSION" ]; then
+    typeset -A nodes
+elif [ -n "$BASH_VERSION" ]; then
+    declare -A nodes
+else
+    echo "Unsupported shell"
+    exit 1
+fi
+
 for title in "${node_titles[@]}"; do
-    node_id=$(curl -s -X POST $API_URL/node -H "Content-Type: application/json" -d "{\"workflow_id\": \"$workflow_id\", \"title\": \"$title\", \"type\": \"Task\", \"description\": \"$title node\"}")
+    node_id=$(curl -s -X POST $API_URL/node -H "Content-Type: application/json" -d "{\"title\": \"$title\", \"type\": \"Task\", \"description\": \"$title node\"}")
     if [ $? -ne 0 ]; then
         echo "Error creating node $title"
         exit 1
     fi
     node_id=$(echo $node_id | sed 's/"//g')
     nodes[$title]=$node_id
+done
+
+# Create workflow node
+for title in "${node_titles[@]}"; do
+    if [ $title == "start" ]; then
+        start_node_id=${nodes[$title]}
+        wnode_id=$(curl -s -X POST $API_URL/workflow-node -H "Content-Type: application/json" -d "{\"workflow_id\": \"$workflow_id\", \"starting_node_id\": \"$start_node_id\", \"is_starting_node\": true}")
+        if [ $? -ne 0 ]; then
+            echo "Error creating workflow node"
+            exit 1
+        fi
+    else 
+        wnode_id=$(curl -s -X POST $API_URL/workflow-node -H "Content-Type: application/json" -d "{\"workflow_id\": \"$workflow_id\", \"starting_node_id\": \"${nodes[$title]}\"}")
+        if [ $? -ne 0 ]; then
+            echo "Error creating workflow node"
+            exit 1
+        fi
+    fi
+    wnode_id=$(echo $wnode_id | sed 's/"//g')
 done
 
 # Create relationships
@@ -51,7 +78,7 @@ relationships=(
 for relationship in "${relationships[@]}"; do
     ancestor=$(echo $relationship | cut -d' ' -f1)
     descendant=$(echo $relationship | cut -d' ' -f2)
-    curl -s -X POST $API_URL/relationship -H "Content-Type: application/json" -d "{\"ancestor\": \"${nodes[$ancestor]}\", \"descendant\": \"${nodes[$descendant]}\"}"
+    curl -s -X POST $API_URL/node/${nodes[$ancestor]}/relationship -H "Content-Type: application/json" -d "{\"ancestor\": \"${nodes[$ancestor]}\", \"descendant\": \"${nodes[$descendant]}\"}"
     if [ $? -ne 0 ]; then
         echo "Error creating relationship between $ancestor and $descendant"
         exit 1

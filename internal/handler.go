@@ -161,3 +161,22 @@ func (wh *WorkflowHandler) CreateWorkflow(resw http.ResponseWriter, req *http.Re
 
 	responseJson(resw, http.StatusCreated, id)
 }
+
+func (wh *WorkflowHandler) CreateWorkflowNode(resw http.ResponseWriter, req *http.Request) {
+	wn := workflow.WorkflowNode{}
+	decoder := json.NewDecoder(req.Body)
+
+	if err := decoder.Decode(&wn); err != nil {
+		responseError(resw, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer req.Body.Close()
+
+	id, err := workflow.CreateWorkflowNode(wh.DB, wn.WorkflowID, wn.NodeID, wn.IsStartingNode)
+	if err != nil {
+		responseError(resw, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responseJson(resw, http.StatusCreated, id)
+}
