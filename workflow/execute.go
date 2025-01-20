@@ -16,6 +16,18 @@ func ExecuteWorkflow(db *sql.DB, workflowID uuid.UUID) error {
 		return fmt.Errorf("failed to fetch starting node: %v", err)
 	}
 
+	// Update workflow status
+	err = UpdateWorkflowStatus(db, workflowID, "executing")
+	if err != nil {
+		return fmt.Errorf("failed to update workflow status: %v", err)
+	}
+
+	// Log workflow execution
+	err = LogWorkflowNodeExecution(db, workflowID, startNode.ID, "executing", "Starting workflow execution")
+	if err != nil {
+		return fmt.Errorf("failed to log workflow execution: %v", err)
+	}
+
 	// Execute nodes recursively
 	err = ExecuteNode(db, startNode.ID)
 	if err != nil {

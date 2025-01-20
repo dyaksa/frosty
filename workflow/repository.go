@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// ============================================ Node ============================================
+
 func CreateNode(db *sql.DB, title, nodeType string, description string) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := db.QueryRow(`
@@ -70,36 +72,6 @@ func GetDescendants(db *sql.DB, ancestor uuid.UUID) ([]Node, error) {
 	return descendants, nil
 }
 
-func LogNodeExecution(db *sql.DB, nodeID uuid.UUID, status, message string) error {
-	_, err := db.Exec(`
-		INSERT INTO workflow_logs (node_id, status, message)
-		VALUES ($1::uuid, $2, $3)
-	`, nodeID, status, message)
-	return err
-}
-
-func LogWorkflowNodeExecution(db *sql.DB, workflowID, nodeID uuid.UUID, status, message string) error {
-	_, err := db.Exec(`
-		INSERT INTO workflow_logs (workflow_id, node_id, status, message, executed_at)
-		VALUES ($1::uuid, $2::uuid, $3, $4, $5)
-	`, workflowID, nodeID, status, message, time.Now())
-	return err
-}
-
-func ValidateWorkflow(db *sql.DB, startNode uuid.UUID) error {
-	rows := db.QueryRow("SELECT COUNT(1) FROM node_closure WHERE ancestor = descendant AND ancestor = $1::uuid", startNode)
-
-	var count int
-	err := rows.Scan(&count)
-	if err != nil {
-		return err
-	}
-	if count > 1 {
-		return fmt.Errorf("cyclic dependency detected")
-	}
-	return nil
-}
-
 func GetImmediateAncestor(db *sql.DB, nodeID uuid.UUID) (Node, error) {
 	row := db.QueryRow(`
 		SELECT n.id, n.title, n.type, n.description, n.created_at, n.updated_at, n.deleted_at
@@ -115,6 +87,37 @@ func GetImmediateAncestor(db *sql.DB, nodeID uuid.UUID) (Node, error) {
 		return Node{}, err
 	}
 	return node, nil
+}
+
+func AllParentsCompleted(db *sql.DB, nodeID uuid.UUID) bool {
+	var count int
+	err := db.QueryRow(`
+        SELECT COUNT(*)
+        FROM node_closure nc
+        JOIN nodes n ON nc.ancestor = n.id
+        WHERE nc.descendant = $1::uuid AND n.type != 'End'
+    `, nodeID).Scan(&count)
+
+	if err != nil {
+		return false
+	}
+	return count == 0
+}
+
+// ============================================ Workflow ============================================
+
+func ValidateWorkflow(db *sql.DB, startNode uuid.UUID) error {
+	rows := db.QueryRow("SELECT COUNT(1) FROM node_closure WHERE ancestor = descendant AND ancestor = $1::uuid", startNode)
+
+	var count int
+	err := rows.Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 1 {
+		return fmt.Errorf("cyclic dependency detected")
+	}
+	return nil
 }
 
 func GetExecutedNodes(db *sql.DB, currentNode uuid.UUID) ([]Node, error) {
@@ -142,21 +145,6 @@ func GetExecutedNodes(db *sql.DB, currentNode uuid.UUID) ([]Node, error) {
 		nodes = append(nodes, node)
 	}
 	return nodes, nil
-}
-
-func AllParentsCompleted(db *sql.DB, nodeID uuid.UUID) bool {
-	var count int
-	err := db.QueryRow(`
-        SELECT COUNT(*)
-        FROM node_closure nc
-        JOIN nodes n ON nc.ancestor = n.id
-        WHERE nc.descendant = $1::uuid AND n.type != 'End'
-    `, nodeID).Scan(&count)
-
-	if err != nil {
-		return false
-	}
-	return count == 0
 }
 
 func GetWorkflowNodes(db *sql.DB, workflowID uuid.UUID) ([]Node, error) {
@@ -196,6 +184,14 @@ func GetWorkflowNodes(db *sql.DB, workflowID uuid.UUID) ([]Node, error) {
 	return nodes, nil
 }
 
+func LogWorkflowNodeExecution(db *sql.DB, workflowID, nodeID uuid.UUID, status, message string) error {
+	_, err := db.Exec(`
+		INSERT INTO workflow_logs (workflow_id, node_id, status, message, executed_at)
+		VALUES ($1::uuid, $2::uuid, $3, $4, $5)
+	`, workflowID, nodeID, status, message, time.Now())
+	return err
+}
+
 func GetStartingNode(db *sql.DB, workflowID uuid.UUID) (Node, error) {
 	// Query to fetch the starting node of the workflow
 	query := `
@@ -226,6 +222,17 @@ func GetStartingNode(db *sql.DB, workflowID uuid.UUID) (Node, error) {
 
 	return node, nil
 }
+
+func UpdateWorkflowStatus(db *sql.DB, workflowID uuid.UUID, status string) error {
+	_, err := db.Exec(`
+		UPDATE workflows
+		SET status = $1, updated_at = NOW()
+		WHERE id = $2
+	`, status, workflowID)
+	return err
+}
+
+// ============================================ Task ============================================
 
 func GetNodeTasks(db *sql.DB, nodeID uuid.UUID) ([]NodeTask, error) {
 	// Query to fetch tasks associated with the given node
@@ -296,15 +303,6 @@ func UpdateTaskStatusAndResponse(db *sql.DB, taskID uuid.UUID, status, response,
 		SET status = $1, response = $2, error = $3, http_code = $4, updated_at = NOW()
 		WHERE task_id = $5
 	`, status, response, errorMessage, httpCode, taskID)
-	return err
-}
-
-func UpdateWorkflowStatus(db *sql.DB, workflowID uuid.UUID, status string) error {
-	_, err := db.Exec(`
-		UPDATE workflows
-		SET status = $1, updated_at = NOW()
-		WHERE id = $2
-	`, status, workflowID)
 	return err
 }
 
