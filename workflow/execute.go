@@ -29,7 +29,7 @@ func ExecuteWorkflow(db *sql.DB, workflowID uuid.UUID) error {
 	}
 
 	// Execute nodes recursively
-	err = ExecuteNode(db, startNode.ID)
+	err = ExecuteNode(db, startNode.ID, workflowID)
 	if err != nil {
 		return fmt.Errorf("workflow execution failed: %v", err)
 	}
@@ -37,7 +37,7 @@ func ExecuteWorkflow(db *sql.DB, workflowID uuid.UUID) error {
 	return nil
 }
 
-func ExecuteNode(db *sql.DB, nodeID uuid.UUID) error {
+func ExecuteNode(db *sql.DB, nodeID uuid.UUID, workflowID uuid.UUID) error {
 	fmt.Printf("Executing node %s\n", nodeID)
 
 	// Retrieve nodeTask associated with the node
@@ -56,6 +56,12 @@ func ExecuteNode(db *sql.DB, nodeID uuid.UUID) error {
 
 	fmt.Printf("All tasks in node %s completed successfully\n", nodeID)
 
+	// Log workflow node execution
+	err = LogWorkflowNodeExecution(db, workflowID, nodeID, "completed", "Node execution completed")
+	if err != nil {
+		return fmt.Errorf("failed to log workflow node execution: %v", err)
+	}
+
 	// Get the next node(s) to execute
 	descendants, err := GetDescendants(db, nodeID)
 	if err != nil {
@@ -64,7 +70,7 @@ func ExecuteNode(db *sql.DB, nodeID uuid.UUID) error {
 
 	// Execute the next node(s)
 	for _, descendant := range descendants {
-		err := ExecuteNode(db, descendant.ID)
+		err := ExecuteNode(db, descendant.ID, workflowID)
 		if err != nil {
 			return fmt.Errorf("execution failed for next node %s: %v", descendant.ID, err)
 		}

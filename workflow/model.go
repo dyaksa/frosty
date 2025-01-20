@@ -63,11 +63,10 @@ type Workflow struct {
 	DeletedAt   *time.Time `db:"deleted_at" json:"deleted_at"`   // Deletion timestamp
 }
 
-type WorkflowNode struct {
+type WorkflowStartingNode struct {
 	ID             uuid.UUID  `db:"id" json:"id"`                             // Unique identifier for the node
 	WorkflowID     uuid.UUID  `db:"workflow_id" json:"workflow_id"`           // ID of the workflow this node belongs to
-	NodeID         uuid.UUID  `db:"node_id" json:"starting_node_id"`          // ID of the related node
-	IsStartingNode bool       `db:"is_starting_node" json:"is_starting_node"` // Is this node the starting node?
+	StartingNodeID uuid.UUID  `db:"starting_node_id" json:"starting_node_id"` // ID of the related node
 	CreatedAt      *time.Time `db:"created_at" json:"created_at"`             // Creation timestamp
 	UpdatedAt      *time.Time `db:"updated_at" json:"updated_at"`             // Update timestamp
 	DeletedAt      *time.Time `db:"deleted_at" json:"deleted_at"`             // Deletion timestamp

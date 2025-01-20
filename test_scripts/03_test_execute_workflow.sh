@@ -49,23 +49,12 @@ for title in "${node_titles[@]}"; do
 done
 
 # Create workflow node
-for title in "${node_titles[@]}"; do
-    if [ $title == "start" ]; then
-        start_node_id=${nodes[$title]}
-        wnode_id=$(curl -s -X POST $API_URL/workflow-node -H "Content-Type: application/json" -d "{\"workflow_id\": \"$workflow_id\", \"starting_node_id\": \"$start_node_id\", \"is_starting_node\": true}")
-        if [ $? -ne 0 ]; then
-            echo "Error creating workflow node"
-            exit 1
-        fi
-    else 
-        wnode_id=$(curl -s -X POST $API_URL/workflow-node -H "Content-Type: application/json" -d "{\"workflow_id\": \"$workflow_id\", \"starting_node_id\": \"${nodes[$title]}\"}")
-        if [ $? -ne 0 ]; then
-            echo "Error creating workflow node"
-            exit 1
-        fi
-    fi
-    wnode_id=$(echo $wnode_id | sed 's/"//g')
-done
+start_node_id=${nodes[$title]}
+wnode_id=$(curl -s -X POST $API_URL/workflow-node -H "Content-Type: application/json" -d "{\"workflow_id\": \"$workflow_id\", \"starting_node_id\": \"$start_node_id\"}")
+if [ $? -ne 0 ]; then
+    echo "Error creating workflow starting node"
+    exit 1
+fi
 
 # Create relationships
 relationships=(

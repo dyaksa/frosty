@@ -155,7 +155,7 @@ func GetWorkflowNodes(db *sql.DB, workflowID uuid.UUID) ([]Node, error) {
 		FROM
 			nodes n
 		INNER JOIN
-			workflow_nodes wn ON n.id = wn.starting_node_id
+			workflow_starting_nodes wn ON n.id = wn.starting_node_id
 		WHERE
 			wn.workflow_id = $1 AND n.deleted_at IS NULL
 		ORDER BY
@@ -200,9 +200,9 @@ func GetStartingNode(db *sql.DB, workflowID uuid.UUID) (Node, error) {
 		FROM
 			nodes n
 		INNER JOIN
-			workflow_nodes wn ON n.id = wn.starting_node_id
+			workflow_starting_nodes wn ON n.id = wn.starting_node_id
 		WHERE
-			wn.workflow_id = $1 AND wn.is_starting_node = true AND n.deleted_at IS NULL
+			wn.workflow_id = $1 AND n.deleted_at IS NULL
 		LIMIT 1;
 	`
 
@@ -330,7 +330,7 @@ func CreateWorkflow(db *sql.DB, name, description string) (uuid.UUID, error) {
 	return id, nil
 }
 
-func CreateWorkflowNode(db *sql.DB, workflowID, nodeID uuid.UUID, isStartingNode bool) (uuid.UUID, error) {
+func CreateWorkflowStartingNode(db *sql.DB, workflowID, nodeID uuid.UUID) (uuid.UUID, error) {
 	// Check if the nodeID exists in the nodes table
 	var exists bool
 	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM nodes WHERE id = $1)`, nodeID).Scan(&exists)
@@ -343,10 +343,10 @@ func CreateWorkflowNode(db *sql.DB, workflowID, nodeID uuid.UUID, isStartingNode
 
 	var id uuid.UUID
 	err = db.QueryRow(`
-		INSERT INTO workflow_nodes (workflow_id, starting_node_id, is_starting_node, created_at)
-		VALUES ($1, $2, $3, NOW())
+		INSERT INTO workflow_starting_nodes (workflow_id, starting_node_id, created_at)
+		VALUES ($1, $2, NOW())
 		RETURNING id
-	`, workflowID, nodeID, isStartingNode).Scan(&id)
+	`, workflowID, nodeID).Scan(&id)
 
 	if err != nil {
 		return uuid.Nil, err

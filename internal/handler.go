@@ -162,8 +162,8 @@ func (wh *WorkflowHandler) CreateWorkflow(resw http.ResponseWriter, req *http.Re
 	responseJson(resw, http.StatusCreated, id)
 }
 
-func (wh *WorkflowHandler) CreateWorkflowNode(resw http.ResponseWriter, req *http.Request) {
-	wn := workflow.WorkflowNode{}
+func (wh *WorkflowHandler) CreateWorkflowStartingNode(resw http.ResponseWriter, req *http.Request) {
+	wn := workflow.WorkflowStartingNode{}
 	decoder := json.NewDecoder(req.Body)
 
 	if err := decoder.Decode(&wn); err != nil {
@@ -172,7 +172,7 @@ func (wh *WorkflowHandler) CreateWorkflowNode(resw http.ResponseWriter, req *htt
 	}
 	defer req.Body.Close()
 
-	id, err := workflow.CreateWorkflowNode(wh.DB, wn.WorkflowID, wn.NodeID, wn.IsStartingNode)
+	id, err := workflow.CreateWorkflowStartingNode(wh.DB, wn.WorkflowID, wn.StartingNodeID)
 	if err != nil {
 		responseError(resw, http.StatusInternalServerError, err.Error())
 		return
