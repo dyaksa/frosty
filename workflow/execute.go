@@ -28,16 +28,31 @@ func ExecuteWorkflow(db *sql.DB, workflowID uuid.UUID) error {
 		return fmt.Errorf("failed to log workflow execution: %v", err)
 	}
 
-	// Execute nodes recursively
-	err = ExecuteNode(db, startNode.ID, workflowID)
-	if err != nil {
-		return fmt.Errorf("workflow execution failed: %v", err)
+	// Initialize a queue for BFS traversal
+	queue := []uuid.UUID{startNode.ID}
+	visited := make(map[uuid.UUID]bool)
+
+	// Execute nodes using BFS
+	for len(queue) > 0 {
+		currentNodeID := queue[0]
+		queue = queue[1:]
+
+		if visited[currentNodeID] {
+			continue
+		}
+
+		visited[currentNodeID] = true
+
+		err = ExecuteNode(db, currentNodeID, workflowID, &queue, visited)
+		if err != nil {
+			return fmt.Errorf("workflow execution failed: %v", err)
+		}
 	}
 
 	return nil
 }
 
-func ExecuteNode(db *sql.DB, nodeID uuid.UUID, workflowID uuid.UUID) error {
+func ExecuteNode(db *sql.DB, nodeID uuid.UUID, workflowID uuid.UUID, queue *[]uuid.UUID, visited map[uuid.UUID]bool) error {
 	fmt.Printf("Executing node %s\n", nodeID)
 
 	// Retrieve nodeTask associated with the node
@@ -68,11 +83,10 @@ func ExecuteNode(db *sql.DB, nodeID uuid.UUID, workflowID uuid.UUID) error {
 		return fmt.Errorf("error retrieving next nodes for node %s: %v", nodeID, err)
 	}
 
-	// Execute the next node(s)
+	// Add descendants to the queue if not visited
 	for _, descendant := range descendants {
-		err := ExecuteNode(db, descendant.ID, workflowID)
-		if err != nil {
-			return fmt.Errorf("execution failed for next node %s: %v", descendant.ID, err)
+		if !visited[descendant.ID] {
+			*queue = append(*queue, descendant.ID)
 		}
 	}
 

@@ -49,8 +49,8 @@ for title in "${node_titles[@]}"; do
 done
 
 # Create workflow node
-start_node_id=${nodes[$title]}
-wnode_id=$(curl -s -X POST $API_URL/workflow-node -H "Content-Type: application/json" -d "{\"workflow_id\": \"$workflow_id\", \"starting_node_id\": \"$start_node_id\"}")
+start_node_id=${nodes["start"]}
+wnode_id=$(curl -s -X POST $API_URL/workflow-starting-node -H "Content-Type: application/json" -d "{\"workflow_id\": \"$workflow_id\", \"starting_node_id\": \"$start_node_id\"}")
 if [ $? -ne 0 ]; then
     echo "Error creating workflow starting node"
     exit 1

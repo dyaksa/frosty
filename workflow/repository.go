@@ -104,9 +104,7 @@ func AllParentsCompleted(db *sql.DB, nodeID uuid.UUID) bool {
 	return count == 0
 }
 
-// ============================================ Workflow ============================================
-
-func ValidateWorkflow(db *sql.DB, startNode uuid.UUID) error {
+func ValidateClosure(db *sql.DB, startNode uuid.UUID) error {
 	rows := db.QueryRow("SELECT COUNT(1) FROM node_closure WHERE ancestor = descendant AND ancestor = $1::uuid", startNode)
 
 	var count int
@@ -119,6 +117,8 @@ func ValidateWorkflow(db *sql.DB, startNode uuid.UUID) error {
 	}
 	return nil
 }
+
+// ============================================ Workflow ============================================
 
 func GetExecutedNodes(db *sql.DB, currentNode uuid.UUID) ([]Node, error) {
 	rows, err := db.Query(`
