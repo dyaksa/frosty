@@ -68,63 +68,6 @@ func (wh *WorkflowHandler) AddRelationship(resw http.ResponseWriter, req *http.R
 	responseJson(resw, http.StatusCreated, relationship)
 }
 
-func (wh *WorkflowHandler) GetDescendants(resw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	id, err := uuid.Parse(vars["id"])
-
-	if err != nil {
-		responseError(resw, http.StatusBadRequest, "Invalid Node Id")
-	}
-
-	descendants, err := workflow.GetDescendants(wh.DB, id)
-	if err != nil {
-		responseError(resw, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	responseJson(resw, http.StatusOK, descendants)
-}
-
-func (wh *WorkflowHandler) ExecuteNode(resw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	id, err := uuid.Parse(vars["id"])
-
-	if err != nil {
-		responseError(resw, http.StatusBadRequest, "Invalid Node Id")
-	}
-
-	err = workflow.ValidateWorkflow(wh.DB, id)
-	if err != nil {
-		responseError(resw, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	err = workflow.ExecuteNode(wh.DB, id)
-	if err != nil {
-		responseError(resw, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	responseJson(resw, http.StatusOK, nil)
-}
-
-func (wh *WorkflowHandler) RollbackNode(resw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	id, err := uuid.Parse(vars["id"])
-
-	if err != nil {
-		responseError(resw, http.StatusBadRequest, "Invalid Node Id")
-	}
-
-	err = workflow.RollbackNode(wh.DB, id)
-	if err != nil {
-		responseError(resw, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	responseJson(resw, http.StatusOK, nil)
-}
-
 func (wh *WorkflowHandler) ExecuteWorkflow(resw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id, err := uuid.Parse(vars["id"])
