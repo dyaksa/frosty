@@ -262,6 +262,7 @@ func GetNodeTasks(db *sql.DB, nodeID uuid.UUID) ([]NodeTask, error) {
 			tasks t ON nt.task_id = t.id
 		WHERE
 			nt.node_id = $1 AND nt.deleted_at IS NULL
+			AND t.type NOT IN ('Start', 'End')
 		ORDER BY
 			nt.task_order ASC;
 	`

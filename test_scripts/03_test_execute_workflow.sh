@@ -39,7 +39,14 @@ else
 fi
 
 for title in "${node_titles[@]}"; do
-    node_id=$(curl -s -X POST $API_URL/node -H "Content-Type: application/json" -d "{\"title\": \"$title\", \"type\": \"Task\", \"description\": \"$title node\"}")
+    if [ "$title" == "start" ]; then
+        node_id=$(curl -s -X POST $API_URL/node -H "Content-Type: application/json" -d "{\"title\": \"$title\", \"type\": \"Start\", \"description\": \"$title node\"}")
+    elif [ "$title" == "end" ]; then
+        node_id=$(curl -s -X POST $API_URL/node -H "Content-Type: application/json" -d "{\"title\": \"$title\", \"type\": \"End\", \"description\": \"$title node\"}")
+    else
+        node_id=$(curl -s -X POST $API_URL/node -H "Content-Type: application/json" -d "{\"title\": \"$title\", \"type\": \"Task\", \"description\": \"$title node\"}")
+    fi
+
     if [ $? -ne 0 ]; then
         echo "Error creating node $title"
         exit 1
