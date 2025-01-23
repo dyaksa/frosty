@@ -16,15 +16,6 @@ check_docker_containers() {
 # Check Docker containers
 check_docker_containers
 
-# Create a workflow
-workflow_id=$(curl -s -X POST $API_URL -H "Content-Type: application/json" -d '{"name": "Sample Workflow", "description": "A test workflow"}')
-if [ $? -ne 0 ]; then
-    echo "Error creating workflow"
-    exit 1
-fi
-
-workflow_id=$(echo $workflow_id | sed 's/"//g')
-
 # Create nodes
 node_titles=("start" "input_new_user" "check_user_personal_info" "save_user_data" "end")
 
@@ -55,13 +46,15 @@ for title in "${node_titles[@]}"; do
     nodes[$title]=$node_id
 done
 
-# Create workflow node
+# Create workflow
 start_node_id=${nodes["start"]}
-wnode_id=$(curl -s -X POST $API_URL/workflow-starting-node -H "Content-Type: application/json" -d "{\"workflow_id\": \"$workflow_id\", \"starting_node_id\": \"$start_node_id\"}")
+workflow_id=$(curl -s -X POST $API_URL -H "Content-Type: application/json" -d "{\"name\": \"Sample Workflow\", \"description\": \"A test workflow\", \"starting_node_id\": \"$start_node_id\"}")
 if [ $? -ne 0 ]; then
-    echo "Error creating workflow starting node"
+    echo "Error creating workflow"
     exit 1
 fi
+
+workflow_id=$(echo $workflow_id | sed 's/"//g')
 
 # Create relationships
 relationships=(

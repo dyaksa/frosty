@@ -45,5 +45,4 @@ func (app *App) initializeRoutes() {
 	app.Router.HandleFunc("/workflow/node/{id:[0-9a-fA-F-]+}/relationship", wfHandler.AddRelationship).Methods("POST")
 	app.Router.HandleFunc("/workflow/{id:[0-9a-fA-F-]+}/execute", wfHandler.ExecuteWorkflow).Methods("POST")
 	app.Router.HandleFunc("/workflow", wfHandler.CreateWorkflow).Methods("POST")
-	app.Router.HandleFunc("/workflow/workflow-starting-node", wfHandler.CreateWorkflowStartingNode).Methods("POST")
 }

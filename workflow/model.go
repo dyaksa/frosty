@@ -55,23 +55,14 @@ type Task struct {
 }
 
 type Workflow struct {
-	ID          uuid.UUID  `db:"id" json:"id"`                   // Unique identifier for the workflow
-	Name        string     `db:"name" json:"name"`               // Name of the workflow
-	Description string     `db:"description" json:"description"` // Description of the workflow
-	CreatedAt   *time.Time `db:"created_at" json:"created_at"`   // Creation timestamp
-	UpdatedAt   *time.Time `db:"updated_at" json:"updated_at"`   // Update timestamp
-	DeletedAt   *time.Time `db:"deleted_at" json:"deleted_at"`   // Deletion timestamp
-}
-
-type WorkflowStartingNode struct {
-	ID             uuid.UUID  `db:"id" json:"id"`                             // Unique identifier for the node
-	WorkflowID     uuid.UUID  `db:"workflow_id" json:"workflow_id"`           // ID of the workflow this node belongs to
+	ID             uuid.UUID  `db:"id" json:"id"`                             // Unique identifier for the workflow
+	Name           string     `db:"name" json:"name"`                         // Name of the workflow
 	StartingNodeID uuid.UUID  `db:"starting_node_id" json:"starting_node_id"` // ID of the related node
+	Description    string     `db:"description" json:"description"`           // Description of the workflow
 	CreatedAt      *time.Time `db:"created_at" json:"created_at"`             // Creation timestamp
 	UpdatedAt      *time.Time `db:"updated_at" json:"updated_at"`             // Update timestamp
 	DeletedAt      *time.Time `db:"deleted_at" json:"deleted_at"`             // Deletion timestamp
 }
-
 type WorkflowLog struct {
 	ID           uuid.UUID      `db:"id" json:"id"`                       // Unique identifier for the log entry, referenced by the caller (can be order, provisioning etc)
 	WorkflowID   uuid.UUID      `db:"workflow_id" json:"workflow_id"`     // ID of the workflow this log belongs to
@@ -85,4 +76,19 @@ type WorkflowLog struct {
 	Metadata     sql.NullString `db:"metadata" json:"metadata"`           // Additional metadata (e.g., execution context)
 	CreatedAt    time.Time      `db:"created_at" json:"created_at"`       // Log creation timestamp
 	UpdatedAt    time.Time      `db:"updated_at" json:"updated_at"`       // Log update timestamp
+}
+
+type NodeTaskLog struct {
+	ID            uuid.UUID      `db:"id" json:"id"`                           // Unique identifier for the log entry, referenced by the caller (can be order, provisioning etc)
+	WorkflowLogID uuid.UUID      `db:"workflow_log_id" json:"workflow_log_id"` // ID of the workflow log this log belongs to
+	NodeTaskID    uuid.UUID      `db:"node_task_id" json:"node_task_id"`       // ID of the node-task this log belongs to
+	Status        string         `db:"status" json:"status"`                   // Status of the node execution (e.g., "success", "failed", "rollback")
+	Message       string         `db:"message" json:"message"`                 // Message of the node execution
+	ExecutedAt    time.Time      `db:"executed_at" json:"executed_at"`         // Timestamp of when the node was executed
+	CompletedAt   sql.NullTime   `db:"completed_at" json:"completed_at"`       // Timestamp of when the node execution was completed
+	ErrorMessage  sql.NullString `db:"error_message" json:"error_message"`     // Details of any error during execution
+	ActionType    string         `db:"action_type" json:"action_type"`         // Type of action performed (e.g., "execution", "rollback")
+	Metadata      sql.NullString `db:"metadata" json:"metadata"`               // Additional metadata (e.g., execution context)
+	CreatedAt     time.Time      `db:"created_at" json:"created_at"`           // Log creation timestamp
+	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`           // Log update timestamp
 }

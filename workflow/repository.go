@@ -8,8 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// ============================================ Node ============================================
-
 func CreateNode(db *sql.DB, title, nodeType string, description string) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := db.QueryRow(`
@@ -118,7 +116,20 @@ func ValidateClosure(db *sql.DB, startNode uuid.UUID) error {
 	return nil
 }
 
-// ============================================ Workflow ============================================
+func CreateWorkflow(db *sql.DB, name, description string, startingNodeID uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := db.QueryRow(`
+		INSERT INTO workflows (name, description, starting_node_id, created_at)
+		VALUES ($1, $2, $3, NOW())
+		RETURNING id
+	`, name, description).Scan(&id)
+
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return id, nil
+}
 
 func GetExecutedNodes(db *sql.DB, currentNode uuid.UUID) ([]Node, error) {
 	rows, err := db.Query(`
@@ -200,7 +211,7 @@ func GetStartingNode(db *sql.DB, workflowID uuid.UUID) (Node, error) {
 		FROM
 			nodes n
 		INNER JOIN
-			workflow_starting_nodes wn ON n.id = wn.starting_node_id
+			workflow wn ON n.id = wn.starting_node_id
 		WHERE
 			wn.workflow_id = $1 AND n.deleted_at IS NULL
 		LIMIT 1;
@@ -231,8 +242,6 @@ func UpdateWorkflowStatus(db *sql.DB, workflowID uuid.UUID, status string) error
 	`, status, workflowID)
 	return err
 }
-
-// ============================================ Task ============================================
 
 func GetNodeTasks(db *sql.DB, nodeID uuid.UUID) ([]NodeTask, error) {
 	// Query to fetch tasks associated with the given node
@@ -314,44 +323,4 @@ func UpdateTaskStatus(db *sql.DB, taskID uuid.UUID, status string) error {
 		WHERE task_id = $2
 	`, status, taskID)
 	return err
-}
-
-func CreateWorkflow(db *sql.DB, name, description string) (uuid.UUID, error) {
-	var id uuid.UUID
-	err := db.QueryRow(`
-		INSERT INTO workflows (name, description, created_at)
-		VALUES ($1, $2, NOW())
-		RETURNING id
-	`, name, description).Scan(&id)
-
-	if err != nil {
-		return uuid.Nil, err
-	}
-
-	return id, nil
-}
-
-func CreateWorkflowStartingNode(db *sql.DB, workflowID, nodeID uuid.UUID) (uuid.UUID, error) {
-	// Check if the nodeID exists in the nodes table
-	var exists bool
-	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM nodes WHERE id = $1)`, nodeID).Scan(&exists)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	if !exists {
-		return uuid.Nil, fmt.Errorf("node ID %s does not exist", nodeID)
-	}
-
-	var id uuid.UUID
-	err = db.QueryRow(`
-		INSERT INTO workflow_starting_nodes (workflow_id, starting_node_id, created_at)
-		VALUES ($1, $2, NOW())
-		RETURNING id
-	`, workflowID, nodeID).Scan(&id)
-
-	if err != nil {
-		return uuid.Nil, err
-	}
-
-	return id, nil
 }
