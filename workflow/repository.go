@@ -213,7 +213,7 @@ func GetStartingNode(db *sql.DB, workflowID uuid.UUID) (Node, error) {
 		INNER JOIN
 			workflows wn ON n.id = wn.starting_node_id
 		WHERE
-			wn.workflow_id = $1 AND n.deleted_at IS NULL
+			wn.id = $1 AND n.deleted_at IS NULL
 		LIMIT 1;
 	`
 
