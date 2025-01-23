@@ -7,9 +7,7 @@ import (
 )
 
 func responseError(resw http.ResponseWriter, respCode int, message string) {
-
 	fmt.Println("Response Error:", message)
-
 	responseJson(resw, respCode, map[string]string{"error": message})
 }
 

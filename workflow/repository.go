@@ -122,7 +122,7 @@ func CreateWorkflow(db *sql.DB, name, description string, startingNodeID uuid.UU
 		INSERT INTO workflows (name, description, starting_node_id, created_at)
 		VALUES ($1, $2, $3, NOW())
 		RETURNING id
-	`, name, description).Scan(&id)
+	`, name, description, startingNodeID).Scan(&id)
 
 	if err != nil {
 		return uuid.Nil, err
@@ -211,7 +211,7 @@ func GetStartingNode(db *sql.DB, workflowID uuid.UUID) (Node, error) {
 		FROM
 			nodes n
 		INNER JOIN
-			workflow wn ON n.id = wn.starting_node_id
+			workflows wn ON n.id = wn.starting_node_id
 		WHERE
 			wn.workflow_id = $1 AND n.deleted_at IS NULL
 		LIMIT 1;
@@ -322,5 +322,28 @@ func UpdateTaskStatus(db *sql.DB, taskID uuid.UUID, status string) error {
 		SET status = $1, updated_at = NOW()
 		WHERE task_id = $2
 	`, status, taskID)
+	return err
+}
+
+func CreateTask(db *sql.DB, title, taskType, httpMethod, action, params string, maxRetries int) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := db.QueryRow(`
+		INSERT INTO tasks (title, type, http_method, action, params, max_retries, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		RETURNING id
+	`, title, taskType, httpMethod, action, params, maxRetries).Scan(&id)
+
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return id, nil
+}
+
+func AddTaskToNode(db *sql.DB, nodeID, taskID uuid.UUID, taskOrder int) error {
+	_, err := db.Exec(`
+		INSERT INTO node_tasks (node_id, task_id, task_order, created_at)
+		VALUES ($1, $2, $3, NOW())
+	`, nodeID, taskID, taskOrder)
 	return err
 }

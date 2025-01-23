@@ -104,3 +104,41 @@ func (wh *WorkflowHandler) CreateWorkflow(resw http.ResponseWriter, req *http.Re
 
 	responseJson(resw, http.StatusCreated, id)
 }
+
+func (wh *WorkflowHandler) CreateTask(resw http.ResponseWriter, req *http.Request) {
+	task := workflow.Task{}
+	decoder := json.NewDecoder(req.Body)
+
+	if err := decoder.Decode(&task); err != nil {
+		responseError(resw, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer req.Body.Close()
+
+	id, err := workflow.CreateTask(wh.DB, task.Title, task.Type, task.HttpMethod, task.Action, task.Params, task.MaxRetries)
+	if err != nil {
+		responseError(resw, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responseJson(resw, http.StatusCreated, id)
+}
+
+func (wh *WorkflowHandler) AddTaskToNode(resw http.ResponseWriter, req *http.Request) {
+	var nodeTask workflow.NodeTask
+	decoder := json.NewDecoder(req.Body)
+
+	if err := decoder.Decode(&nodeTask); err != nil {
+		responseError(resw, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer req.Body.Close()
+
+	err := workflow.AddTaskToNode(wh.DB, nodeTask.NodeID, nodeTask.TaskID, nodeTask.TaskOrder)
+	if err != nil {
+		responseError(resw, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responseJson(resw, http.StatusCreated, nodeTask)
+}

@@ -80,3 +80,52 @@ func TestWorkflowHandler_AddRelationship(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, resw.Code)
 }
+
+func TestWorkflowHandler_CreateTask(t *testing.T) {
+	db, mock, _ := sqlmock.New()
+	defer db.Close()
+
+	handler := WorkflowHandler{DB: db}
+	task := workflow.Task{
+		Title:      "Test Task",
+		Type:       "API",
+		HttpMethod: "POST",
+		Action:     "http://example.com/api",
+		Params:     "{}",
+		MaxRetries: 3,
+	}
+	taskJSON, _ := json.Marshal(task)
+
+	mock.ExpectQuery("INSERT INTO tasks").
+		WithArgs("Test Task", "API", "POST", "http://example.com/api", "{}", 3).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New().String()))
+
+	req, _ := http.NewRequest("POST", "/workflow/task", bytes.NewBuffer(taskJSON))
+	resw := httptest.NewRecorder()
+
+	handler.CreateTask(resw, req)
+
+	assert.Equal(t, http.StatusCreated, resw.Code)
+}
+
+func TestWorkflowHandler_AddTaskToNode(t *testing.T) {
+	db, mock, _ := sqlmock.New()
+	defer db.Close()
+
+	handler := WorkflowHandler{DB: db}
+	nodeTask := workflow.NodeTask{
+		NodeID:     uuid.New(),
+		TaskID:     uuid.New(),
+		TaskOrder:  1,
+	}
+	nodeTaskJSON, _ := json.Marshal(nodeTask)
+
+	mock.ExpectExec("INSERT INTO node_tasks").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	req, _ := http.NewRequest("POST", "/workflow/node/task", bytes.NewBuffer(nodeTaskJSON))
+	resw := httptest.NewRecorder()
+
+	handler.AddTaskToNode(resw, req)
+
+	assert.Equal(t, http.StatusCreated, resw.Code)
+}
