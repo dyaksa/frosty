@@ -203,6 +203,23 @@ func LogWorkflowNodeExecution(db *sql.DB, workflowID, nodeID uuid.UUID, status, 
 	return err
 }
 
+func GetWorkflowLogID(db *sql.DB, workflowID uuid.UUID, nodeTaskID uuid.UUID) (uuid.UUID, error) {
+	var workflowLogID uuid.UUID
+	err := db.QueryRow(`
+		SELECT wl.id
+		FROM workflow_logs wl
+		JOIN node_tasks nt ON wl.node_id = nt.node_id
+		WHERE wl.workflow_id = $1 AND nt.id = $2
+		ORDER BY wl.executed_at DESC
+		LIMIT 1
+	`, workflowID, nodeTaskID).Scan(&workflowLogID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to get workflow log ID: %v", err)
+	}
+
+	return workflowLogID, nil
+}
+
 func GetStartingNode(db *sql.DB, workflowID uuid.UUID) (Node, error) {
 	// Query to fetch the starting node of the workflow
 	query := `
@@ -345,5 +362,13 @@ func AddTaskToNode(db *sql.DB, nodeID, taskID uuid.UUID, taskOrder int) error {
 		INSERT INTO node_tasks (node_id, task_id, task_order, created_at)
 		VALUES ($1, $2, $3, NOW())
 	`, nodeID, taskID, taskOrder)
+	return err
+}
+
+func LogNodeTaskExecution(db *sql.DB, workflowLogID, nodeTaskID uuid.UUID, status, message, actionType, metadata string) error {
+	_, err := db.Exec(`
+		INSERT INTO node_task_logs (workflow_log_id, node_task_id, status, message, action_type, metadata, executed_at)
+		VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, NOW())
+	`, workflowLogID, nodeTaskID, status, message, actionType, metadata)
 	return err
 }
