@@ -48,7 +48,8 @@ done
 
 # Create tasks for nodes
 task_titles=("input_new_user_task" "check_user_personal_info_task" "save_user_data_task")
-task_actions=("http://example.com/api/input_new_user" "http://example.com/api/check_user_personal_info" "http://example.com/api/save_user_data")
+# task_actions=("http://example.com/api/input_new_user" "http://example.com/api/check_user_personal_info" "http://example.com/api/save_user_data")
+task_actions=("https://webhook-test.com/4b56515b4c61c9f98dc48c494fb6c334" "https://webhook-test.com/19afedc91e785e45c4104dceedf36e4e" "https://webhook-test.com/832e7916239a45f3f56574d6d1f5389a")
 
 for i in "${!task_titles[@]}"; do
     task_id=$(curl -s -X POST $API_URL/task -H "Content-Type: application/json" -d "{\"title\": \"${task_titles[$i]}\", \"type\": \"API\", \"http_method\": \"POST\", \"action\": \"${task_actions[$i]}\", \"params\": \"{}\", \"max_retries\": 3}")

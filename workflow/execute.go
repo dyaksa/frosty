@@ -57,6 +57,7 @@ func ExecuteNode(db *sql.DB, nodeID uuid.UUID, workflowID uuid.UUID, queue *[]uu
 
 	// Retrieve nodeTask associated with the node
 	nodeTasks, err := GetNodeTasks(db, nodeID)
+
 	if err != nil {
 		return fmt.Errorf("error retrieving tasks for node %s: %v", nodeID, err)
 	}
@@ -68,8 +69,8 @@ func ExecuteNode(db *sql.DB, nodeID uuid.UUID, workflowID uuid.UUID, queue *[]uu
 			return fmt.Errorf("task %s execution failed in node %s: %v", nodeTask.ID, nodeID, err)
 		}
 
-		// Log task execution
-		err = LogTaskExecution(db, workflowID, nodeTask.ID, "completed", "Task execution completed", "execution", "")
+		// Log workflow execution
+		err = LogWorkflowNodeExecution(db, workflowID, nodeID, "completed", fmt.Sprintf("Task %s execution completed", nodeTask.TaskID))
 		if err != nil {
 			return fmt.Errorf("failed to log task execution: %v", err)
 		}
@@ -179,20 +180,4 @@ func performTask(task Task) (error, string, int) {
 func evaluateCondition(node Node, child Node) bool {
 	// Example: Evaluate based on some attributes or external data
 	return true // Replace with actual condition logic
-}
-
-func LogTaskExecution(db *sql.DB, workflowID uuid.UUID, nodeTaskID uuid.UUID, status, message, actionType, metadata string) error {
-	// Get the workflow log ID for the current node execution
-	workflowLogID, err := GetWorkflowLogID(db, workflowID, nodeTaskID)
-	if err != nil {
-		return fmt.Errorf("failed to get workflow log ID: %v", err)
-	}
-
-	// Log the task execution
-	err = LogNodeTaskExecution(db, workflowLogID, nodeTaskID, status, message, actionType, metadata)
-	if err != nil {
-		return fmt.Errorf("failed to log task execution: %v", err)
-	}
-
-	return nil
 }
