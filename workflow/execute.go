@@ -23,7 +23,7 @@ func ExecuteWorkflow(db *sql.DB, workflowID uuid.UUID) error {
 	}
 
 	// Log workflow execution
-	err = LogWorkflowNodeExecution(db, workflowID, startNode.ID, "executing", "Starting workflow execution")
+	err = LogWorkflowExecution(db, workflowID, startNode.ID, "executing", "Starting workflow execution")
 	if err != nil {
 		return fmt.Errorf("failed to log workflow execution: %v", err)
 	}
@@ -45,8 +45,21 @@ func ExecuteWorkflow(db *sql.DB, workflowID uuid.UUID) error {
 
 		err = ExecuteNode(db, currentNodeID, workflowID, &queue, visited)
 		if err != nil {
+			UpdateWorkflowStatus(db, workflowID, "error")
 			return fmt.Errorf("workflow execution failed: %v", err)
 		}
+	}
+
+	// Update workflow status
+	err = UpdateWorkflowStatus(db, workflowID, "completed")
+	if err != nil {
+		return fmt.Errorf("failed to update workflow status: %v", err)
+	}
+
+	// Log workflow execution
+	err = LogWorkflowExecution(db, workflowID, startNode.ID, "completed", "Starting workflow execution")
+	if err != nil {
+		return fmt.Errorf("failed to log workflow execution: %v", err)
 	}
 
 	return nil
@@ -64,13 +77,13 @@ func ExecuteNode(db *sql.DB, nodeID uuid.UUID, workflowID uuid.UUID, queue *[]uu
 
 	// Execute each task in sequence
 	for _, nodeTask := range nodeTasks {
-		err := ExecuteTask(db, nodeTask.Task, nodeTask.RetryCount)
+		err := ExecuteTask(db, workflowID, nodeID, nodeTask.Task, nodeTask.RetryCount)
 		if err != nil {
 			return fmt.Errorf("task %s execution failed in node %s: %v", nodeTask.ID, nodeID, err)
 		}
 
 		// Log workflow execution
-		err = LogWorkflowNodeExecution(db, workflowID, nodeID, "completed", fmt.Sprintf("Task %s execution completed", nodeTask.TaskID))
+		err = LogWorkflowExecution(db, workflowID, nodeID, "completed", fmt.Sprintf("Task %s execution completed", nodeTask.TaskID))
 		if err != nil {
 			return fmt.Errorf("failed to log task execution: %v", err)
 		}
@@ -79,7 +92,7 @@ func ExecuteNode(db *sql.DB, nodeID uuid.UUID, workflowID uuid.UUID, queue *[]uu
 	fmt.Printf("All tasks in node %s completed successfully\n", nodeID)
 
 	// Log workflow node execution
-	err = LogWorkflowNodeExecution(db, workflowID, nodeID, "completed", "Node execution completed")
+	err = LogWorkflowExecution(db, workflowID, nodeID, "completed", "Node execution completed")
 	if err != nil {
 		return fmt.Errorf("failed to log workflow node execution: %v", err)
 	}
@@ -100,7 +113,7 @@ func ExecuteNode(db *sql.DB, nodeID uuid.UUID, workflowID uuid.UUID, queue *[]uu
 	return nil
 }
 
-func ExecuteTask(db *sql.DB, task Task, retryCount int) error {
+func ExecuteTask(db *sql.DB, workflowID uuid.UUID, nodeID uuid.UUID, task Task, retryCount int) error {
 	fmt.Printf("Executing task %s\n", task.Title)
 
 	// Retry logic
@@ -114,9 +127,14 @@ func ExecuteTask(db *sql.DB, task Task, retryCount int) error {
 			fmt.Printf("Task %s executed successfully on attempt %d\n", task.ID, retry+1)
 
 			// Update task status and response
-			err := UpdateTaskStatusAndResponse(db, task.ID, "completed", response, "", httpCode)
+			err := UpdateTaskStatus(db, task.ID, "completed", retryCount)
 			if err != nil {
 				return fmt.Errorf("failed to update task %s status: %v", task.ID, err)
+			}
+
+			err = LogWorkflowExecution(db, workflowID, nodeID, "completed", fmt.Sprintf("Task \"%s\" performed successfully: [%s] %s", task.Title, httpCode, response))
+			if err != nil {
+				return fmt.Errorf("failed to log workflow node execution: %v", err)
 			}
 
 			return nil
@@ -126,9 +144,14 @@ func ExecuteTask(db *sql.DB, task Task, retryCount int) error {
 		fmt.Printf("Task %s failed on attempt %d: %v\n", task.ID, retry+1, err)
 
 		// Update task retry count and error
-		err = UpdateTaskStatusAndResponse(db, task.ID, "failed", "", err.Error(), httpCode)
+		err = UpdateTaskStatus(db, task.ID, "failed", retryCount)
 		if err != nil {
 			return fmt.Errorf("failed to update task %s status on failure: %v", task.ID, err)
+		}
+
+		err = LogWorkflowExecution(db, workflowID, nodeID, "failed", fmt.Sprintf("Task \"%s\" (retry no: %d) performed failed: [%s] %s", task.Title, retry, httpCode, response))
+		if err != nil {
+			return fmt.Errorf("failed to log workflow node execution: %v", err)
 		}
 
 		if retry < retryLimit {

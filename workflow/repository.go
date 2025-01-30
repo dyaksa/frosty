@@ -195,7 +195,7 @@ func GetWorkflowNodes(db *sql.DB, workflowID uuid.UUID) ([]Node, error) {
 	return nodes, nil
 }
 
-func LogWorkflowNodeExecution(db *sql.DB, workflowID, nodeID uuid.UUID, status, message string) error {
+func LogWorkflowExecution(db *sql.DB, workflowID, nodeID uuid.UUID, status, message string) error {
 	_, err := db.Exec(`
 		INSERT INTO workflow_logs (workflow_id, node_id, status, message, executed_at)
 		VALUES ($1::uuid, $2::uuid, $3, $4, $5)
@@ -307,21 +307,12 @@ func GetNodeTasks(db *sql.DB, nodeID uuid.UUID) ([]NodeTask, error) {
 	return nodeTasks, nil
 }
 
-func UpdateTaskStatusAndResponse(db *sql.DB, taskID uuid.UUID, status, response, errorMessage string, httpCode int) error {
+func UpdateTaskStatus(db *sql.DB, taskID uuid.UUID, status string, retryCount int) error {
 	_, err := db.Exec(`
 		UPDATE node_tasks
-		SET status = $1, response = $2, error = $3, http_code = $4, updated_at = NOW()
-		WHERE task_id = $5
-	`, status, response, errorMessage, httpCode, taskID)
-	return err
-}
-
-func UpdateTaskStatus(db *sql.DB, taskID uuid.UUID, status string) error {
-	_, err := db.Exec(`
-		UPDATE node_tasks
-		SET status = $1, updated_at = NOW()
-		WHERE task_id = $2
-	`, status, taskID)
+		SET status = $1, retry_count = $2, updated_at = NOW()
+		WHERE task_id = $3
+	`, status, retryCount, taskID)
 	return err
 }
 

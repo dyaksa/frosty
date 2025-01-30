@@ -141,7 +141,7 @@ func rollbackTask(db *sql.DB, taskID uuid.UUID) error {
 
 	// Logic to revert task (could involve deleting records, undoing changes, etc.)
 	// Example: Mark task as reverted or execute rollback actions
-	err := UpdateTaskStatus(db, taskID, "reverted")
+	err := UpdateTaskStatus(db, taskID, "reverted", 0)
 	if err != nil {
 		return fmt.Errorf("failed to mark task %s as reverted: %v", taskID, err)
 	}
