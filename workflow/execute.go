@@ -107,7 +107,7 @@ func ExecuteTask(db *sql.DB, task Task, retryCount int) error {
 	retryLimit := task.MaxRetries
 	for retry := 0; retry <= retryLimit; retry++ {
 		// Simulate task execution
-		err, response, httpCode := performTask(task)
+		response, httpCode, err := performTask(task)
 
 		// Handle success
 		if err == nil {
@@ -143,11 +143,11 @@ func ExecuteTask(db *sql.DB, task Task, retryCount int) error {
 	return fmt.Errorf("task %s execution failed after maximum retries", task.ID)
 }
 
-func performTask(task Task) (error, string, int) {
+func performTask(task Task) (string, int, error) {
 	// Create the HTTP request
 	req, err := http.NewRequest(task.HttpMethod, task.Action, bytes.NewBuffer([]byte(task.Params)))
 	if err != nil {
-		return err, "", http.StatusInternalServerError
+		return "", http.StatusInternalServerError, err
 	}
 
 	// Set headers if needed
@@ -157,7 +157,7 @@ func performTask(task Task) (error, string, int) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err, "", http.StatusInternalServerError
+		return "", http.StatusInternalServerError, err
 	}
 	defer resp.Body.Close()
 
@@ -165,16 +165,16 @@ func performTask(task Task) (error, string, int) {
 	var responseBody bytes.Buffer
 	_, err = responseBody.ReadFrom(resp.Body)
 	if err != nil {
-		return err, "", http.StatusInternalServerError
+		return "", http.StatusInternalServerError, err
 	}
 
 	// Handle the response
 	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
-		return nil, responseBody.String(), resp.StatusCode
+		return responseBody.String(), resp.StatusCode, nil
 	}
 
 	// Handle errors
-	return fmt.Errorf("Task %s failed with status code: %d", task.Title, resp.StatusCode), "", resp.StatusCode
+	return "", resp.StatusCode, fmt.Errorf("Task %s failed with status code: %d", task.Title, resp.StatusCode)
 }
 
 func evaluateCondition(node Node, child Node) bool {
