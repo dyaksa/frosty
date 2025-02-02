@@ -2,6 +2,7 @@ CREATE TABLE workflow_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workflow_id UUID,
     node_id UUID,
+    task_id UUID,
     status VARCHAR(50) NOT NULL,
     message TEXT,
     executed_at TIMESTAMPTZ DEFAULT NOW(),
@@ -11,6 +12,9 @@ CREATE TABLE workflow_logs (
     metadata TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
+    http_code INT,
+    response TEXT,
+    error TEXT,
     FOREIGN KEY (workflow_id) REFERENCES workflows(id),
     FOREIGN KEY (node_id) REFERENCES nodes(id)
 );

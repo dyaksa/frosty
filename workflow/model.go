@@ -32,9 +32,6 @@ type NodeTask struct {
 	Status     string     `db:"status" json:"status"`           // Current status of the task (e.g., pending, completed)
 	RetryCount int        `db:"retry_count" json:"retry_count"` // Number of retries for this task
 	Data       string     `db:"data" json:"data"`               // Data associated with the task
-	HttpCode   *int       `db:"http_code" json:"http_code"`     // HTTP status code returned by the task
-	Response   *string    `db:"response" json:"response"`       // Response from the task
-	Error      *string    `db:"error" json:"error,omitempty"`   // Error message, if any
 	CreatedAt  *time.Time `db:"created_at" json:"created_at"`   // Creation timestamp
 	UpdatedAt  *time.Time `db:"updated_at" json:"updated_at"`   // Update timestamp
 	DeletedAt  *time.Time `db:"deleted_at" json:"deleted_at"`   // Deletion timestamp
@@ -67,6 +64,7 @@ type WorkflowLog struct {
 	ID           uuid.UUID      `db:"id" json:"id"`                       // Unique identifier for the log entry, referenced by the caller (can be order, provisioning etc)
 	WorkflowID   uuid.UUID      `db:"workflow_id" json:"workflow_id"`     // ID of the workflow this log belongs to
 	NodeID       *uuid.UUID     `db:"node_id" json:"node_id"`             // ID of the node being logged
+	TaskID       *uuid.UUID     `db:"task_id" json:"task_id"`             // ID of the task being logged
 	Status       string         `db:"status" json:"status"`               // Status of the node execution (e.g., "success", "failed", "rollback")
 	Message      string         `db:"message" json:"message"`             // Message of the node execution
 	ExecutedAt   time.Time      `db:"executed_at" json:"executed_at"`     // Timestamp of when the node was executed
@@ -76,4 +74,7 @@ type WorkflowLog struct {
 	Metadata     sql.NullString `db:"metadata" json:"metadata"`           // Additional metadata (e.g., execution context)
 	CreatedAt    time.Time      `db:"created_at" json:"created_at"`       // Log creation timestamp
 	UpdatedAt    time.Time      `db:"updated_at" json:"updated_at"`       // Log update timestamp
+	HttpCode     *int           `db:"http_code" json:"http_code"`         // HTTP status code returned by the task
+	Response     *string        `db:"response" json:"response"`           // Response from the task
+	Error        *string        `db:"error" json:"error,omitempty"`       // Error message, if any
 }

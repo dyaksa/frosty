@@ -3,7 +3,6 @@ package workflow
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -195,11 +194,15 @@ func GetWorkflowNodes(db *sql.DB, workflowID uuid.UUID) ([]Node, error) {
 	return nodes, nil
 }
 
-func LogWorkflowExecution(db *sql.DB, workflowID, nodeID uuid.UUID, status, message string) error {
+func LogWorkflowExecution(db *sql.DB, workflowID, nodeID uuid.UUID, taskID *uuid.UUID, status, message string, httpCode *int, response *string, errorMessage error) error {
+	errorMessageStr := ""
+	if errorMessage != nil {
+		errorMessageStr = errorMessage.Error()
+	}
 	_, err := db.Exec(`
-		INSERT INTO workflow_logs (workflow_id, node_id, status, message, executed_at)
-		VALUES ($1::uuid, $2::uuid, $3, $4, $5)
-	`, workflowID, nodeID, status, message, time.Now())
+		INSERT INTO workflow_logs (workflow_id, node_id, status, message, executed_at, task_id, http_code, response, error)
+		VALUES ($1::uuid, $2::uuid, $3, $4, NOW(), $5, $6, $7, $8)
+	`, workflowID, nodeID, status, message, taskID, httpCode, response, errorMessageStr)
 	return err
 }
 
@@ -253,9 +256,6 @@ func GetNodeTasks(db *sql.DB, nodeID uuid.UUID) ([]NodeTask, error) {
 			nt.task_order,
 			nt.status,
 			nt.retry_count,
-			nt.http_code,
-			nt.response,
-			nt.error,
 			nt.created_at,
 			nt.updated_at,
 			nt.deleted_at,
@@ -292,7 +292,6 @@ func GetNodeTasks(db *sql.DB, nodeID uuid.UUID) ([]NodeTask, error) {
 		err := rows.Scan(
 			&nodeTask.ID, &nodeTask.NodeID, &nodeTask.TaskID,
 			&nodeTask.TaskOrder, &nodeTask.Status, &nodeTask.RetryCount,
-			&nodeTask.HttpCode, &nodeTask.Response, &nodeTask.Error,
 			&nodeTask.CreatedAt, &nodeTask.UpdatedAt, &nodeTask.DeletedAt,
 			&nodeTask.Task.ID, &nodeTask.Task.Title, &nodeTask.Task.Type,
 			&nodeTask.Task.HttpMethod, &nodeTask.Task.Action, &nodeTask.Task.Params,
