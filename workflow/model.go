@@ -78,3 +78,16 @@ type WorkflowLog struct {
 	Response     *string        `db:"response" json:"response"`           // Response from the task
 	Error        *string        `db:"error" json:"error,omitempty"`       // Error message, if any
 }
+
+type WorkflowExecution struct {
+	ID                  uuid.UUID    `db:"id" json:"id"`                                         // Unique identifier for the workflow execution
+	WorkflowID          uuid.UUID    `db:"workflow_id" json:"workflow_id"`                       // ID of the workflow this log belongs to
+	LastExecutedNodeID  *uuid.UUID   `db:"last_executed_node_id" json:"last_executed_node_id"`   // ID of the node being logged
+	LastExecutedTaskID  *uuid.UUID   `db:"last_executed_task_id" json:"last_executed_task_id"`   // ID of the task being logged
+	Status              string       `db:"status" json:"status"`                                 // Status of the node execution (e.g., "success", "failed", "rollback")
+	Message             string       `db:"message" json:"message"`                               // Message of the node execution
+	LastNodeExecutedAt  time.Time    `db:"last_node_executed_at" json:"last_node_executed_at"`   // Timestamp of when the node was executed
+	LastNodeCompletedAt sql.NullTime `db:"last_node_completed_at" json:"last_node_completed_at"` // Timestamp of when the node execution was completed
+	LastTaskExecutedAt  time.Time    `db:"last_task_executed_at" json:"last_task_executed_at"`   // Timestamp of when the task was executed
+	LastTaskCompletedAt sql.NullTime `db:"last_task_completed_at" json:"last_task_completed_at"` // Timestamp of when the task execution was completed
+}
