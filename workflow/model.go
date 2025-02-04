@@ -84,6 +84,7 @@ type WorkflowExecution struct {
 	WorkflowID          uuid.UUID    `db:"workflow_id" json:"workflow_id"`                       // ID of the workflow this log belongs to
 	LastExecutedNodeID  *uuid.UUID   `db:"last_executed_node_id" json:"last_executed_node_id"`   // ID of the node being logged
 	LastExecutedTaskID  *uuid.UUID   `db:"last_executed_task_id" json:"last_executed_task_id"`   // ID of the task being logged
+	ReferenceNumber     string       `db:"reference_number" json:"reference_number"`             // Reference number of the node execution, could be order id, provisioning id, etc
 	Status              string       `db:"status" json:"status"`                                 // Status of the node execution (e.g., "success", "failed", "rollback")
 	Message             string       `db:"message" json:"message"`                               // Message of the node execution
 	LastNodeExecutedAt  time.Time    `db:"last_node_executed_at" json:"last_node_executed_at"`   // Timestamp of when the node was executed
