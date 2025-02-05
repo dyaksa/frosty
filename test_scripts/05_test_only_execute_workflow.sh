@@ -2,7 +2,7 @@
 set -e
 
 API_URL="http://localhost:8080/workflow"
-workflow_id="5b8f46af-5cd2-4d01-a5da-a8fc02c60d85"
+workflow_id="ec40715c-5b80-4bdb-af4c-e1abc7d3a728"
 
 # Execute the workflow
 curl -s -X POST $API_URL/$workflow_id/execute -H "Content-Type: application/json"

@@ -75,6 +75,10 @@ func ExecuteNode(db *sql.DB, nodeID uuid.UUID, workflowID uuid.UUID, queue *[]uu
 		return fmt.Errorf("error retrieving tasks for node %s: %v", nodeID, err)
 	}
 
+	fmt.Printf("Node %s has %d tasks\n", nodeID, len(nodeTasks))
+	fmt.Printf("Executing tasks in node %s\n", nodeID)
+	fmt.Printf("Tasks: %v\n", nodeTasks)
+
 	// Execute each task in sequence
 	for _, nodeTask := range nodeTasks {
 		err := ExecuteTask(db, workflowID, nodeID, nodeTask.Task, nodeTask.RetryCount)
@@ -221,10 +225,6 @@ func evaluateCondition(db *sql.DB, currentNodeID uuid.UUID, descendants []Node) 
 	}
 
 	// Return the next node if all tasks are completed for the current node
-
-	fmt.Println("All tasks completed: ", allTasksCompleted)
-	fmt.Println("Descendants: ", descendants)
-
 	if allTasksCompleted && len(descendants) > 0 {
 		return descendants[0].ID, nil
 	}
