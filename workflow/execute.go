@@ -29,13 +29,13 @@ func ExecuteWorkflow(db *sql.DB, workflowID uuid.UUID) error {
 	}
 
 	// Initialize a queue for BFS traversal
-	queue := []uuid.UUID{startNode.ID}
+	nodeQueue := []uuid.UUID{startNode.ID}
 	visited := make(map[uuid.UUID]bool)
 
 	// Execute nodes using BFS
-	for len(queue) > 0 {
-		currentNodeID := queue[0]
-		queue = queue[1:]
+	for len(nodeQueue) > 0 {
+		currentNodeID := nodeQueue[0]
+		nodeQueue = nodeQueue[1:]
 
 		if visited[currentNodeID] {
 			continue
@@ -43,7 +43,7 @@ func ExecuteWorkflow(db *sql.DB, workflowID uuid.UUID) error {
 
 		visited[currentNodeID] = true
 
-		err = ExecuteNode(db, currentNodeID, workflowID, &queue, visited)
+		err = ExecuteNode(db, currentNodeID, workflowID, &nodeQueue, visited)
 		if err != nil {
 			UpdateWorkflowStatus(db, workflowID, "error")
 			return fmt.Errorf("workflow execution failed: %v", err)
@@ -103,11 +103,15 @@ func ExecuteNode(db *sql.DB, nodeID uuid.UUID, workflowID uuid.UUID, queue *[]uu
 		return fmt.Errorf("error retrieving next nodes for node %s: %v", nodeID, err)
 	}
 
-	// Add descendants to the queue if not visited
-	for _, descendant := range descendants {
-		if !visited[descendant.ID] {
-			*queue = append(*queue, descendant.ID)
-		}
+	// Evaluate condition for next node execution
+	nextNodeID, err := evaluateCondition(db, nodeID, descendants)
+	if err != nil {
+		return fmt.Errorf("error evaluating condition for next node execution: %v", err)
+	}
+
+	// Add the next node to the queue if not visited
+	if nextNodeID != uuid.Nil && !visited[nextNodeID] {
+		*queue = append(*queue, nextNodeID)
 	}
 
 	return nil
@@ -200,9 +204,33 @@ func performTask(task Task) (string, int, error) {
 	return "", resp.StatusCode, fmt.Errorf("Task %s failed with status code: %d", task.Title, resp.StatusCode)
 }
 
-func evaluateCondition(node Node, child Node) bool {
-	// Example: Evaluate based on some attributes or external data
-	return true // Replace with actual condition logic
+func evaluateCondition(db *sql.DB, currentNodeID uuid.UUID, descendants []Node) (uuid.UUID, error) {
+	// Check the status of the current node tasks
+	nodeTasks, err := GetNodeTasks(db, currentNodeID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("error retrieving tasks for node %s: %v", currentNodeID, err)
+	}
+
+	// If all tasks are completed successfully, execute the next node
+	allTasksCompleted := true
+	for _, nodeTask := range nodeTasks {
+		if nodeTask.Status != "completed" {
+			allTasksCompleted = false
+			break
+		}
+	}
+
+	// Return the next node if all tasks are completed for the current node
+
+	fmt.Println("All tasks completed: ", allTasksCompleted)
+	fmt.Println("Descendants: ", descendants)
+
+	if allTasksCompleted && len(descendants) > 0 {
+		return descendants[0].ID, nil
+	}
+
+	// If no condition matches, return nil
+	return uuid.Nil, nil
 }
 
 func ExecuteWorkflowByExecutionID(db *sql.DB, executionID uuid.UUID) error {
@@ -231,13 +259,13 @@ func ExecuteWorkflowByExecutionID(db *sql.DB, executionID uuid.UUID) error {
 	}
 
 	// Initialize a queue for BFS traversal
-	queue := []uuid.UUID{startNode.ID}
+	nodeQueue := []uuid.UUID{startNode.ID}
 	visited := make(map[uuid.UUID]bool)
 
 	// Execute nodes using BFS
-	for len(queue) > 0 {
-		currentNodeID := queue[0]
-		queue = queue[1:]
+	for len(nodeQueue) > 0 {
+		currentNodeID := nodeQueue[0]
+		nodeQueue = nodeQueue[1:]
 
 		if visited[currentNodeID] {
 			continue
@@ -245,7 +273,7 @@ func ExecuteWorkflowByExecutionID(db *sql.DB, executionID uuid.UUID) error {
 
 		visited[currentNodeID] = true
 
-		err = ExecuteNode(db, currentNodeID, execution.WorkflowID, &queue, visited)
+		err = ExecuteNode(db, currentNodeID, execution.WorkflowID, &nodeQueue, visited)
 		if err != nil {
 			UpdateWorkflowExecutionStatus(db, executionID, "error")
 			return fmt.Errorf("workflow execution failed: %v", err)

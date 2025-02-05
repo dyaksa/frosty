@@ -1,6 +1,7 @@
 CREATE TABLE workflow_executions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workflow_id UUID NOT NULL,
+    node_id UUID,
     last_executed_node_id UUID,
     last_executed_task_id UUID,
     reference_number VARCHAR(255) NOT NULL,

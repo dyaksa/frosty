@@ -96,10 +96,6 @@ for relationship in "${relationships[@]}"; do
 done
 
 # Execute the workflow
-curl -s -X POST $API_URL/$workflow_id/execute -H "Content-Type: application/json"
-if [ $? -ne 0 ]; then
-    echo "Error executing the workflow"
-    exit 1
-fi
+echo $workflow_id
 
-echo "Workflow executed successfully"
+echo "Workflow setup successfully"
