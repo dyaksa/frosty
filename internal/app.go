@@ -47,4 +47,6 @@ func (app *App) initializeRoutes() {
 	app.Router.HandleFunc("/workflow", wfHandler.CreateWorkflow).Methods("POST")
 	app.Router.HandleFunc("/workflow/task", wfHandler.CreateTask).Methods("POST")
 	app.Router.HandleFunc("/workflow/node/task", wfHandler.AddTaskToNode).Methods("POST")
+	app.Router.HandleFunc("/workflow/execution", wfHandler.CreateWorkflowExecution).Methods("POST")
+	app.Router.HandleFunc("/workflow/execution/{id:[0-9a-fA-F-]+}/execute", wfHandler.ExecuteWorkflowByExecutionID).Methods("POST")
 }

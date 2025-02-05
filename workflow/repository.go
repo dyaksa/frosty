@@ -337,3 +337,53 @@ func AddTaskToNode(db *sql.DB, nodeID, taskID uuid.UUID, taskOrder int) error {
 	`, nodeID, taskID, taskOrder)
 	return err
 }
+
+func CreateWorkflowExecution(db *sql.DB, workflowID uuid.UUID, referenceNumber string) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := db.QueryRow(`
+		INSERT INTO workflow_executions (workflow_id, reference_number, status, created_at, updated_at)
+		VALUES ($1, $2, 'pending', NOW(), NOW())
+		RETURNING id
+	`, workflowID, referenceNumber).Scan(&id)
+
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return id, nil
+}
+
+func GetWorkflowExecutionByID(db *sql.DB, executionID uuid.UUID) (WorkflowExecution, error) {
+	query := `
+		SELECT
+			id, workflow_id, last_executed_node_id, last_executed_task_id, reference_number, status, message,
+			last_node_executed_at, last_node_completed_at, last_task_executed_at, last_task_completed_at, created_at, updated_at
+		FROM
+			workflow_executions
+		WHERE
+			id = $1
+	`
+
+	row := db.QueryRow(query, executionID)
+
+	var execution WorkflowExecution
+	err := row.Scan(
+		&execution.ID, &execution.WorkflowID, &execution.LastExecutedNodeID, &execution.LastExecutedTaskID, &execution.ReferenceNumber,
+		&execution.Status, &execution.Message, &execution.LastNodeExecutedAt, &execution.LastNodeCompletedAt,
+		&execution.LastTaskExecutedAt, &execution.LastTaskCompletedAt, &execution.CreatedAt, &execution.UpdatedAt,
+	)
+	if err != nil {
+		return WorkflowExecution{}, fmt.Errorf("failed to fetch workflow execution: %v", err)
+	}
+
+	return execution, nil
+}
+
+func UpdateWorkflowExecutionStatus(db *sql.DB, executionID uuid.UUID, status string) error {
+	_, err := db.Exec(`
+		UPDATE workflow_executions
+		SET status = $1, updated_at = NOW()
+		WHERE id = $2
+	`, status, executionID)
+	return err
+}

@@ -111,7 +111,6 @@ func (wh *WorkflowHandler) CreateTask(resw http.ResponseWriter, req *http.Reques
 
 	if err := decoder.Decode(&task); err != nil {
 		responseError(resw, http.StatusBadRequest, "Invalid request payload")
-		return
 	}
 	defer req.Body.Close()
 
@@ -130,7 +129,6 @@ func (wh *WorkflowHandler) AddTaskToNode(resw http.ResponseWriter, req *http.Req
 
 	if err := decoder.Decode(&nodeTask); err != nil {
 		responseError(resw, http.StatusBadRequest, "Invalid request payload")
-		return
 	}
 	defer req.Body.Close()
 
@@ -141,4 +139,41 @@ func (wh *WorkflowHandler) AddTaskToNode(resw http.ResponseWriter, req *http.Req
 	}
 
 	responseJson(resw, http.StatusCreated, nodeTask)
+}
+
+func (wh *WorkflowHandler) CreateWorkflowExecution(resw http.ResponseWriter, req *http.Request) {
+	var wfExec workflow.WorkflowExecution
+	decoder := json.NewDecoder(req.Body)
+
+	if err := decoder.Decode(&wfExec); err != nil {
+		responseError(resw, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer req.Body.Close()
+
+	id, err := workflow.CreateWorkflowExecution(wh.DB, wfExec.WorkflowID, wfExec.ReferenceNumber)
+	if err != nil {
+		responseError(resw, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responseJson(resw, http.StatusCreated, id)
+}
+
+func (wh *WorkflowHandler) ExecuteWorkflowByExecutionID(resw http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id, err := uuid.Parse(vars["id"])
+
+	if err != nil {
+		responseError(resw, http.StatusBadRequest, "Invalid Workflow Execution Id")
+		return
+	}
+
+	err = workflow.ExecuteWorkflowByExecutionID(wh.DB, id)
+	if err != nil {
+		responseError(resw, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responseJson(resw, http.StatusOK, nil)
 }

@@ -204,3 +204,65 @@ func evaluateCondition(node Node, child Node) bool {
 	// Example: Evaluate based on some attributes or external data
 	return true // Replace with actual condition logic
 }
+
+func ExecuteWorkflowByExecutionID(db *sql.DB, executionID uuid.UUID) error {
+	// Fetch the workflow execution details
+	execution, err := GetWorkflowExecutionByID(db, executionID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch workflow execution: %v", err)
+	}
+
+	// Update workflow execution status
+	err = UpdateWorkflowExecutionStatus(db, executionID, "executing")
+	if err != nil {
+		return fmt.Errorf("failed to update workflow execution status: %v", err)
+	}
+
+	// Fetch starting node
+	startNode, err := GetStartingNode(db, execution.WorkflowID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch starting node: %v", err)
+	}
+
+	// Log workflow execution
+	err = LogWorkflowExecution(db, execution.WorkflowID, startNode.ID, nil, "executing", "Starting workflow execution", nil, nil, err)
+	if err != nil {
+		return fmt.Errorf("failed to log workflow execution: %v", err)
+	}
+
+	// Initialize a queue for BFS traversal
+	queue := []uuid.UUID{startNode.ID}
+	visited := make(map[uuid.UUID]bool)
+
+	// Execute nodes using BFS
+	for len(queue) > 0 {
+		currentNodeID := queue[0]
+		queue = queue[1:]
+
+		if visited[currentNodeID] {
+			continue
+		}
+
+		visited[currentNodeID] = true
+
+		err = ExecuteNode(db, currentNodeID, execution.WorkflowID, &queue, visited)
+		if err != nil {
+			UpdateWorkflowExecutionStatus(db, executionID, "error")
+			return fmt.Errorf("workflow execution failed: %v", err)
+		}
+	}
+
+	// Update workflow execution status
+	err = UpdateWorkflowExecutionStatus(db, executionID, "completed")
+	if err != nil {
+		return fmt.Errorf("failed to update workflow execution status: %v", err)
+	}
+
+	// Log workflow execution
+	err = LogWorkflowExecution(db, execution.WorkflowID, startNode.ID, nil, "completed", "Starting workflow execution", nil, nil, err)
+	if err != nil {
+		return fmt.Errorf("failed to log workflow execution: %v", err)
+	}
+
+	return nil
+}

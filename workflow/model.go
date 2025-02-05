@@ -91,4 +91,6 @@ type WorkflowExecution struct {
 	LastNodeCompletedAt sql.NullTime `db:"last_node_completed_at" json:"last_node_completed_at"` // Timestamp of when the node execution was completed
 	LastTaskExecutedAt  time.Time    `db:"last_task_executed_at" json:"last_task_executed_at"`   // Timestamp of when the task was executed
 	LastTaskCompletedAt sql.NullTime `db:"last_task_completed_at" json:"last_task_completed_at"` // Timestamp of when the task execution was completed
+	CreatedAt           time.Time    `db:"created_at" json:"created_at"`                         // Log creation timestamp
+	UpdatedAt           time.Time    `db:"updated_at" json:"updated_at"`                         // Log update timestamp
 }
